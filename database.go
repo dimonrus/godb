@@ -9,14 +9,14 @@ import (
 )
 
 // Init Database Object
-func (dbo *DBO) Init() (*DBO, error) {
+func (dbo DBO) Init() (*DBO, error) {
 	db, err := getDb(dbo.Connection)
 	if err != nil {
-		return dbo, err
+		return &dbo, err
 	}
 	dbo.DB = db
 
-	return dbo, nil
+	return &dbo, nil
 }
 
 // Get Db Instance
