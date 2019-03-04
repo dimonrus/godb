@@ -1,4 +1,4 @@
-package main
+package godb
 
 import (
 	"context"
@@ -61,7 +61,7 @@ func (dbo *DBO) Exec(query string, args ...interface{}) (sql.Result, error) {
 }
 
 // SQL Query Row
-func (dbo *DBO) QueryRow(query string, args ...interface{}) (*sql.Row) {
+func (dbo *DBO) QueryRow(query string, args ...interface{}) *sql.Row {
 	if strings.Contains(query, "?") {
 		query = preparePositionalArgsQuery(query)
 	}
@@ -114,7 +114,7 @@ func (tx *SqlTx) Query(query string, args ...interface{}) (*sql.Rows, error) {
 	return tx.Tx.QueryContext(context.Background(), query, args...)
 }
 
-// Query Row Transaction 
+// Query Row Transaction
 func (tx *SqlTx) QueryRow(query string, args ...interface{}) *sql.Row {
 	if strings.Contains(query, "?") {
 		query = preparePositionalArgsQuery(query)
@@ -172,8 +172,7 @@ func preparePositionalArgsQuery(query string) string {
 }
 
 // Logging query
-func logDbQuery(logger Logger, query string, args ... interface{}) {
+func logDbQuery(logger Logger, query string, args ...interface{}) {
 	queryString := strings.Join(strings.Fields(query), " ")
 	logger.Printf("\n %s", queryString)
 }
-

@@ -1,18 +1,18 @@
-package main
+package godb
 
 import (
 	"database/sql"
 	"fmt"
+	_ "github.com/lib/pq"
 	"log"
 	"os"
 	"testing"
-	_ "github.com/lib/pq"
 )
 
-type connection struct {}
-type wrongConnection struct{connection}
+type connection struct{}
+type wrongConnection struct{ connection }
 type testData struct {
-	Id int
+	Id   int
 	Code string
 }
 
@@ -27,7 +27,7 @@ func (c *wrongConnection) GetDbType() string {
 }
 func (c *connection) String() string {
 	return fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
-		"localhost", 5432, "postgres", "root", "goreav")
+		"192.168.1.110", 5432, "godb", "godb", "godb")
 }
 func (c *connection) GetDbType() string {
 	return "postgres"
@@ -62,6 +62,31 @@ func initDb() (*DBO, error) {
 	}.Init()
 }
 
+func createTable(db *DBO) (*DBO, error) {
+	_, err := db.Exec("create table if not exists apple_attribute (id serial not null, code text not null);")
+	if err != nil {
+		return db, err
+	}
+	_, err = db.Exec("insert into apple_attribute (code) values ('one'), ('two')")
+	return db, err
+}
+
+func deleteTable(db *DBO) error {
+	_, err := db.Exec("DROP TABLE IF EXISTS apple_attribute")
+	return err
+}
+
+func TestSqlStmt_Exec(t *testing.T) {
+	db, err := initDb()
+	if err != nil {
+		t.Fatal(err)
+	}
+	db, err = createTable(db)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestDBO_Init(t *testing.T) {
 	_, err := initDb()
 	if err != nil {
@@ -85,7 +110,10 @@ func testParseAll(rows *sql.Rows) (*testDatas, error) {
 }
 
 func TestDBO_Query(t *testing.T) {
-	db, _ := initDb()
+	db, err := initDb()
+	if err != nil {
+		t.Fatal(err)
+	}
 	rows, err := db.Query("select id, code from apple_attribute where id in ($1, $2)", 1, 2)
 	if err != nil {
 		t.Fatal(err)
@@ -136,7 +164,10 @@ func TestDBO_Begin(t *testing.T) {
 }
 
 func TestSqlTx_Prepare(t *testing.T) {
-	db, _ := initDb()
+	db, err := initDb()
+	if err != nil {
+		t.Fatal(err)
+	}
 	tx, err := db.Begin()
 	if err != nil {
 		t.Fatal(err)
@@ -207,4 +238,16 @@ func TestSqlTx_Prepare(t *testing.T) {
 		}
 	}
 	tx.Rollback()
+}
+
+func TestDBO_ExecDelete(t *testing.T) {
+	db, err := initDb()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = deleteTable(db)
+	if err != nil {
+		t.Fatal(err)
+	}
 }

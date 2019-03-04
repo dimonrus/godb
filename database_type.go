@@ -1,4 +1,4 @@
-package main
+package godb
 
 import "database/sql"
 
@@ -42,4 +42,3 @@ type SqlStmt struct {
 	Options
 	query string
 }
-
