@@ -191,7 +191,7 @@ func CreateModelFile(schema string, table string, path string) (*os.File, string
 
 // Get model file header
 func getModelHeader(imports []string) (bytes.Buffer, error) {
-	baseImports := []string{`"strings"`, `"database/sql"`, `"errors"`, `"fmt"`, `"github.com/dimonrus/gohelp"`, `"github.com/dimonrus/godb"`}
+	baseImports := []string{`"strings"`, `"database/sql"`, `"errors"`, `"fmt"`, `"github.com/dimonrus/godb"`}
 	imports = append(imports, baseImports...)
 	t := `package models
 
