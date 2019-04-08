@@ -163,10 +163,11 @@ ORDER BY a.attnum;`, schema, table)
 }
 
 // Start script
-func MakeModel(dbo *DBO, path string, schema string, table string) error {
+func MakeModel(db *DBO, path string, schema string, table string) error {
 	if table == "" {
 		return errors.New("table name is empty")
 	}
+	dbo = db
 	return CreateModel(schema, table, path)
 }
 
