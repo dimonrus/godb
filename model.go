@@ -131,6 +131,8 @@ ORDER BY a.attnum;`, schema, table)
 			column.ModelType = "string"
 		case column.DataType == "jsonb":
 			column.ModelType = "struct{}"
+		case column.DataType == "uuid[]":
+			column.ModelType = "[]string"
 		case strings.Contains(column.DataType, "timestamp"):
 			column.ModelType = "time.Time"
 			column.Import = `"time"`
