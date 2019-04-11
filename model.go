@@ -127,6 +127,8 @@ ORDER BY a.attnum;`, schema, table)
 			column.Import = `"time"`
 		case strings.Contains(column.DataType, "character varying"):
 			column.ModelType = "string"
+		case strings.Contains(column.DataType, "numeric"):
+			column.ModelType = "float32"
 		case column.DataType == "uuid":
 			column.ModelType = "string"
 		case column.DataType == "jsonb":
