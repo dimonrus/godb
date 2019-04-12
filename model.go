@@ -420,7 +420,7 @@ func (m *{{ .Model }}) Search(dbo *godb.DBO, filter godb.SqlFilter) (*[]{{ .Mode
 	for rows.Next() {
 		row, err := (&{{ .Model }}{}).parse(rows)
 		if err != nil {
-			return nil, {{ $index := 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }}, {{ end }}{{ $index = inc $index }}entity{{ $column.ModelName }}s{{ end }}{{ end }}, err
+			return &result, {{ $index := 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }}, {{ end }}{{ $index = inc $index }}entity{{ $column.ModelName }}s{{ end }}{{ end }}, err
 		}
 		{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}
 		entity{{ $column.ModelName }}s = append(entity{{ $column.ModelName }}s, row.{{ $column.ModelName}}){{ end }}{{ end }}
