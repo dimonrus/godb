@@ -4,13 +4,12 @@ import (
 	"github.com/dimonrus/gohelp"
 	"os"
 	"os/exec"
-	"strings"
 	"text/template"
 )
 
 // Dictionary model interface
 type IDictionaryMapping interface {
-	Search(path string, filter SqlFilter, db *DBO) ([]IDictionaryMapping, []int, error)
+	Search(filter SqlFilter, db *DBO) ([]IDictionaryMapping, []int64, error)
 	GetDictionaryType() string
 	GetCode() string
 }
@@ -40,18 +39,13 @@ CREATE INDEX IF NOT EXISTS dictionary_type_idx
 	return nil
 }
 
-// Create model
-func CreateDictionaryModel(path string, dbo *DBO) error {
-	return MakeModel(dbo, path, "public", "dictionary")
-}
-
 // Create or update dictionary mapping
 func GenerateDictionaryMapping(path string, model IDictionaryMapping, db *DBO) error {
 	filter := SqlFilter{}
 	filter.AddOrder("type", "ASC")
 	filter.AddOrder("created_at", "ASC")
 	filter.AddOrder("id", "ASC")
-	dictionaries, _, err := model.Search(path, filter, db)
+	dictionaries, _, err := model.Search(filter, db)
 	if err != nil {
 		return err
 	}
@@ -88,7 +82,6 @@ func GenerateDictionaryMapping(path string, model IDictionaryMapping, db *DBO) e
 func getDictionaryTemplate() *template.Template {
 	funcMap := template.FuncMap{
 		"camelCase": func(str string) string {
-			str = strings.ToLower(str)
 			result, _ := gohelp.ToCamelCase(str, true)
 			return result
 		},
