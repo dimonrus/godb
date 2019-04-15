@@ -14,7 +14,8 @@ type Connection interface {
 	String() string
 	GetDbType() string
 	GetMaxConnection() int
-	GetConnectionIdleLifetime() int
+	GetConnMaxLifetime() int
+	GetMaxIdleConns() int
 }
 
 // Database Object Options

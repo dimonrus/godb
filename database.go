@@ -32,8 +32,9 @@ func getDb(connection Connection) (*sql.DB, error) {
 		return nil, err
 	}
 	// Set connection options
-	dbo.SetMaxIdleConns(connection.GetMaxConnection())
-	dbo.SetConnMaxLifetime(time.Second * time.Duration(connection.GetConnectionIdleLifetime()))
+	dbo.SetMaxIdleConns(connection.GetMaxIdleConns())
+	dbo.SetConnMaxLifetime(time.Second * time.Duration(connection.GetConnMaxLifetime()))
+	dbo.SetMaxOpenConns(connection.GetMaxConnection())
 
 	return dbo, nil
 }
