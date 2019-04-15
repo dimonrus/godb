@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS dictionary
   code       TEXT                NOT NULL,
   label      TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT localtimestamp NOT NULL,
-  updated_at TIMESTAMP WITH TIME ZONE
+  updated_at TIMESTAMP WITH TIME ZONE,
   deleted_at TIMESTAMP WITH TIME ZONE
 );
 
