@@ -62,9 +62,9 @@ SELECT a.attname                                                                
        CASE WHEN a.attnotnull THEN FALSE ELSE TRUE END                           AS is_nullable,
        s.nspname                                                                 AS schema,
        t.relname                                                                 AS table,
-       CASE WHEN i.indisprimary THEN TRUE ELSE FALSE END                        AS is_primary,
+       CASE WHEN i.indisprimary THEN TRUE ELSE FALSE END                         AS is_primary,
        ic.column_default,
-       pg_get_serial_sequence(ic.table_schema || '.' || table_name, column_name) AS sequence
+       pg_get_serial_sequence(ic.table_schema || '.' || ic.table_name, ic.column_name) AS sequence
 FROM pg_attribute a
        JOIN pg_class t ON a.attrelid = t.oid
        JOIN pg_namespace s ON t.relnamespace = s.oid
@@ -75,7 +75,9 @@ WHERE a.attnum > 0
   AND NOT a.attisdropped
   AND s.nspname = '%s'
   AND t.relname = '%s'
-ORDER BY a.attnum;`, schema, table)
+GROUP BY a.attname, a.atttypid, a.atttypmod, a.attnotnull, s.nspname, t.relname, i.indisprimary, ic.column_default, ic.table_schema, ic.table_name, ic.column_name, a.attnum
+ORDER BY a.attnum;
+`, schema, table)
 
 	rows, err := dbo.Query(query)
 	if err != nil {
