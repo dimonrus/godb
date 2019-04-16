@@ -62,7 +62,7 @@ SELECT a.attname                                                                
        CASE WHEN a.attnotnull THEN FALSE ELSE TRUE END                                 AS is_nullable,
        s.nspname                                                                       AS schema,
        t.relname                                                                       AS table,
-       max(i.indisprimary::int)::BOOLEAN                                               AS is_primary,
+       CASE WHEN max(i.indisprimary::int)::BOOLEAN THEN TRUE ELSE FALSE END            AS is_primary,
        ic.column_default,
        pg_get_serial_sequence(ic.table_schema || '.' || ic.table_name, ic.column_name) AS sequence
 FROM pg_attribute a
