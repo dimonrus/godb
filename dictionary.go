@@ -9,7 +9,7 @@ import (
 
 // Dictionary model interface
 type IDictionaryMapping interface {
-	Search(filter SqlFilter, db *DBO) ([]IDictionaryMapping, []int64, error)
+	Search(db *DBO, filter SqlFilter) ([]IDictionaryMapping, []int64, error)
 	GetDictionaryType() string
 	GetCode() string
 }
