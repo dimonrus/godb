@@ -45,7 +45,7 @@ func GenerateDictionaryMapping(path string, model IDictionaryMapping, db *DBO) e
 	filter.AddOrder("type", "ASC")
 	filter.AddOrder("created_at", "ASC")
 	filter.AddOrder("id", "ASC")
-	dictionaries, _, err := model.Search(filter, db)
+	dictionaries, _, err := model.Search(db, filter)
 	if err != nil {
 		return err
 	}
