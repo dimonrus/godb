@@ -57,16 +57,17 @@ func parseColumnRow(rows *sql.Rows) (*Column, error) {
 // Get table columns from db
 func GetTableColumns(schema string, table string) (*Columns, error) {
 	query := fmt.Sprintf(`
-SELECT a.attname                                                                 AS column_name,
-       format_type(a.atttypid, a.atttypmod)                                      AS data_type,
-       CASE WHEN a.attnotnull THEN FALSE ELSE TRUE END                           AS is_nullable,
-       s.nspname                                                                 AS schema,
-       t.relname                                                                 AS table,
-       CASE WHEN i.indisprimary THEN TRUE ELSE FALSE END                         AS is_primary,
+SELECT a.attname                                                                       AS column_name,
+       format_type(a.atttypid, a.atttypmod)                                            AS data_type,
+       CASE WHEN a.attnotnull THEN FALSE ELSE TRUE END                                 AS is_nullable,
+       s.nspname                                                                       AS schema,
+       t.relname                                                                       AS table,
+       max(i.indisprimary::int)::BOOLEAN                                               AS is_primary,
        ic.column_default,
        pg_get_serial_sequence(ic.table_schema || '.' || ic.table_name, ic.column_name) AS sequence
 FROM pg_attribute a
        JOIN pg_class t ON a.attrelid = t.oid
+
        JOIN pg_namespace s ON t.relnamespace = s.oid
        LEFT JOIN pg_index i ON i.indrelid = a.attrelid AND a.attnum = ANY (i.indkey)
        LEFT JOIN information_schema.columns AS ic
@@ -75,7 +76,8 @@ WHERE a.attnum > 0
   AND NOT a.attisdropped
   AND s.nspname = '%s'
   AND t.relname = '%s'
-GROUP BY a.attname, a.atttypid, a.atttypmod, a.attnotnull, s.nspname, t.relname, i.indisprimary, ic.column_default, ic.table_schema, ic.table_name, ic.column_name, a.attnum
+GROUP BY a.attname, a.atttypid, a.atttypmod, a.attnotnull, s.nspname, t.relname, ic.column_default,
+         ic.table_schema, ic.table_name, ic.column_name, a.attnum
 ORDER BY a.attnum;
 `, schema, table)
 
