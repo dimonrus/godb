@@ -300,7 +300,7 @@ func getModelLoader(model string, table string, columns Columns) (bytes.Buffer, 
 	t := `// SQL load Query
 func (m *{{ .Model }}) GetLoadQuery() string {
 	columns := strings.Join(m.Columns(), ",")
-	return "SELECT " + columns + " FROM {{ .Table }} WHERE {{ $index := 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }} AND {{ end }}{{ $index = inc $index }}{{ $column.Name }} = ${{inc $key}}{{ end }}{{ end }};"
+	return "SELECT " + columns + " FROM {{ .Table }} WHERE {{ $index := 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }} AND {{ end }}{{ $index = inc $index }}{{ $column.Name }} = ${{ $index }}{{ end }}{{ end }};"
 }
 // Load method
 func (m *{{ .Model }}) Load(dbo *godb.DBO) (*{{ .Model }}, error) {
