@@ -329,7 +329,7 @@ func (m *{{ .Model }}) Load(dbo *godb.DBO) (*{{ .Model }}, error) {
 func getModelDeleter(model string, table string, columns Columns) (bytes.Buffer, error) {
 	t := `// SQL delete Query
 func (m *{{ .Model }}) GetDeleteQuery() string {
-	return "DELETE FROM {{ .Table }} WHERE {{ $index := 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }} AND {{ end }}{{ $index = inc $index }}{{ $column.Name }} = ${{inc $key}}{{ end }}{{ end }};"
+	return "DELETE FROM {{ .Table }} WHERE {{ $index := 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }} AND {{ end }}{{ $index = inc $index }}{{ $column.Name }} = ${{$index}}{{ end }}{{ end }};"
 }
 // Delete method
 func (m *{{ .Model }}) Delete(dbo *godb.DBO) error {
