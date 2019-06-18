@@ -13,18 +13,6 @@ type sqlOrderFilter struct {
 	Direction string
 }
 
-// Filter Field
-type sqlFieldsFilter struct {
-	Field     string
-	Condition string
-	Value     interface{}
-}
-
-// In Filter
-type sqlInFilter struct {
-	Expression string
-}
-
 // SQL Expression
 type sqlExpression struct {
 	Expression string
