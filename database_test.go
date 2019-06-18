@@ -35,8 +35,12 @@ func (c *connection) GetDbType() string {
 func (c *connection) GetMaxConnection() int {
 	return 50
 }
-func (c *connection) GetConnectionIdleLifetime() int {
+func (c *connection) GetMaxIdleConns() int {
 	return 15
+}
+
+func (c *connection) GetConnMaxLifetime() int {
+	return 50
 }
 
 func TestDBO_InitError(t *testing.T) {
