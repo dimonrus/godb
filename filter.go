@@ -38,8 +38,6 @@ type sqlPaginationFilter struct {
 
 // Filter struct
 type SqlFilter struct {
-	fields     []sqlFieldsFilter
-	inExpr     []sqlInFilter
 	expression []sqlExpression
 	orders     []sqlOrderFilter
 	pagination sqlPaginationFilter
@@ -48,8 +46,14 @@ type SqlFilter struct {
 
 // Add fileld to filter
 func (f *SqlFilter) AddFiledFilter(field string, condition string, value interface{}) *SqlFilter {
-	f.fields = append(f.fields, sqlFieldsFilter{Field: field, Condition: condition, Value: "?"})
-	f.arguments = append(f.arguments, value)
+	expression := field + " " + condition + " ?"
+	expr := sqlExpression{
+		Expression: expression,
+	}
+	f.expression = append(f.expression, expr)
+	if value != nil {
+		f.arguments = append(f.arguments, value)
+	}
 	return f
 }
 
@@ -59,10 +63,10 @@ func (f *SqlFilter) AddInFilter(field string, values []interface{}) *SqlFilter {
 	for i := range condition {
 		condition[i] = "?"
 	}
-	inFilter := sqlInFilter{
-		fmt.Sprintf("%s IN (%s)", field, strings.Join(condition, ",")),
+	expression := sqlExpression{
+		Expression: fmt.Sprintf("%s IN (%s)", field, strings.Join(condition, ",")),
 	}
-	f.inExpr = append(f.inExpr, inFilter)
+	f.expression = append(f.expression, expression)
 	f.arguments = append(f.arguments, values...)
 	return f
 }
@@ -73,10 +77,10 @@ func (f *SqlFilter) AddNotInFilter(field string, values []interface{}) *SqlFilte
 	for i := range condition {
 		condition[i] = "?"
 	}
-	inFilter := sqlInFilter{
-		fmt.Sprintf("%s NOT IN (%s)", field, strings.Join(condition, ",")),
+	expression := sqlExpression{
+		Expression: fmt.Sprintf("%s NOT IN (%s)", field, strings.Join(condition, ",")),
 	}
-	f.inExpr = append(f.inExpr, inFilter)
+	f.expression = append(f.expression, expression)
 	f.arguments = append(f.arguments, values...)
 	return f
 }
@@ -113,8 +117,6 @@ func (f *SqlFilter) GetArguments() []interface{} {
 
 // Make SQL query
 func (f SqlFilter) String() string {
-	var filters []string
-	var inFilters []string
 	var conditionFilters []string
 	var expressionFilters []string
 	var orders []string
@@ -132,22 +134,8 @@ func (f SqlFilter) String() string {
 		pagination = fmt.Sprintf("%sLIMIT %v OFFSET %v", pagination, f.pagination.Limit, f.pagination.Offset)
 	}
 
-	for _, value := range f.fields {
-		filters = append(filters, fmt.Sprintf("%s %s %s", value.Field, value.Condition, value.Value))
-	}
-	for _, value := range f.inExpr {
-		inFilters = append(inFilters, value.Expression)
-	}
 	for _, value := range f.expression {
 		expressionFilters = append(expressionFilters, value.Expression)
-	}
-
-	if len(filters) > 0 {
-		conditionFilters = append(conditionFilters, filters...)
-	}
-
-	if len(inFilters) > 0 {
-		conditionFilters = append(conditionFilters, inFilters...)
 	}
 
 	if len(expressionFilters) > 0 {
@@ -161,7 +149,7 @@ func (f SqlFilter) String() string {
 
 // Get query with WHERE
 func (f SqlFilter) GetWithWhere() string {
-	if len(f.fields) > 0 || len(f.inExpr) > 0 || len(f.expression) > 0 {
+	if len(f.expression) > 0 {
 		return "WHERE " + f.String()
 	}
 
