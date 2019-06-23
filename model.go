@@ -303,9 +303,9 @@ func (m *{{ .Model }}) GetLoadQuery() string {
 	return "SELECT " + columns + " FROM {{ .Table }} WHERE {{ $index := 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }} AND {{ end }}{{ $index = inc $index }}{{ $column.Name }} = ${{ $index }}{{ end }}{{ end }};"
 }
 // Load method
-func (m *{{ .Model }}) Load(dbo *godb.DBO) (*{{ .Model }}, error) {
+func (m *{{ .Model }}) Load(q godb.Queryer) (*{{ .Model }}, error) {
 	if {{ $index := 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }} && {{ end }}{{ $index = inc $index }} m.{{ $column.ModelName }} != {{ if eq $column.ModelType "string" }}""{{ else }}0{{ end }}{{ end }}{{ end }} {
-		iterator, err := dbo.Query(m.GetLoadQuery(), {{ $index := 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }}, {{ end }}{{ $index = inc $index }}m.{{ $column.ModelName }}{{ end }}{{ end }})
+		iterator, err := q.Query(m.GetLoadQuery(), {{ $index := 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }}, {{ end }}{{ $index = inc $index }}m.{{ $column.ModelName }}{{ end }}{{ end }})
 
 		if err != nil && err != sql.ErrNoRows {
 			return nil, err
@@ -332,8 +332,8 @@ func (m *{{ .Model }}) GetDeleteQuery() string {
 	return "DELETE FROM {{ .Table }} WHERE {{ $index := 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }} AND {{ end }}{{ $index = inc $index }}{{ $column.Name }} = ${{$index}}{{ end }}{{ end }};"
 }
 // Delete method
-func (m *{{ .Model }}) Delete(dbo *godb.DBO) error {
-	_, err := dbo.Exec(m.GetDeleteQuery(), {{ $index := 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }}, {{ end }}{{ $index = inc $index }}m.{{ $column.ModelName }}{{ end }}{{ end }})
+func (m *{{ .Model }}) Delete(q godb.Queryer) error {
+	_, err := q.Exec(m.GetDeleteQuery(), {{ $index := 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }}, {{ end }}{{ $index = inc $index }}m.{{ $column.ModelName }}{{ end }}{{ end }})
 
 	return err
 }
@@ -354,13 +354,13 @@ func getModelSaver(model string, table string, columns Columns) (bytes.Buffer, e
 	var t string
 
 	saveMethod := `//Model saver method
-func (m *{{ .Model }}) Save(dbo *godb.DBO) (*{{ .Model }}, error) {
+func (m *{{ .Model }}) Save(q godb.Queryer) (*{{ .Model }}, error) {
 	var err error
 	if {{ $index := 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }} && {{ end }}{{ $index = inc $index }} m.{{ $column.ModelName }} != {{ if eq $column.ModelType "string" }}""{{ else }}0{{ end }}{{ end }}{{ end }} {
-		err = dbo.QueryRow(m.GetSaveQuery(), {{ $index := 0 }}{{ range $key, $column := .Columns }}{{ if or (not (system $column)) $column.IsPrimaryKey }}{{ if $index }}, {{ end }}&m.{{ $column.ModelName }}{{ $index = inc $index }}{{ end}}{{ end}}).
+		err = q.QueryRow(m.GetSaveQuery(), {{ $index := 0 }}{{ range $key, $column := .Columns }}{{ if or (not (system $column)) $column.IsPrimaryKey }}{{ if $index }}, {{ end }}&m.{{ $column.ModelName }}{{ $index = inc $index }}{{ end}}{{ end}}).
 			Scan({{ $index := 0 }}{{ range $key, $column := .Columns }}{{ if (system $column) }}{{ if $index }}, {{ end }}&m.{{ $column.ModelName }}{{ $index = inc $index }}{{ end}}{{ end}})
 	} else {
-		err = dbo.QueryRow(m.GetSaveQuery(), {{ $index := 0 }}{{ range $key, $column := .Columns }}{{ if not (system $column) }}{{ if $index }}, {{ end }}&m.{{ $column.ModelName }}{{ $index = inc $index }}{{ end}}{{ end}}).
+		err = q.QueryRow(m.GetSaveQuery(), {{ $index := 0 }}{{ range $key, $column := .Columns }}{{ if not (system $column) }}{{ if $index }}, {{ end }}&m.{{ $column.ModelName }}{{ $index = inc $index }}{{ end}}{{ end}}).
 			Scan({{ $index := 0 }}{{ range $key, $column := .Columns }}{{ if (system $column) }}{{ if $index }}, {{ end }}&m.{{ $column.ModelName }}{{ $index = inc $index }}{{ end}}{{ end}})
 	}
 	if err != nil {
@@ -372,8 +372,8 @@ func (m *{{ .Model }}) Save(dbo *godb.DBO) (*{{ .Model }}, error) {
 `
 	if !hasSequence {
 		saveMethod := `//Model saver method
-func (m *{{ .Model }}) Save(dbo *godb.DBO) (*{{ .Model }}, error) {
-	err := dbo.QueryRow(m.GetSaveQuery(), {{ $index := 0 }}{{ range $key, $column := .Columns }}{{ if or (not (system $column)) $column.IsPrimaryKey }}{{ if $index }}, {{ end }}&m.{{ $column.ModelName }}{{ $index = inc $index }}{{ end}}{{ end}}).
+func (m *{{ .Model }}) Save(q godb.Queryer) (*{{ .Model }}, error) {
+	err := q.QueryRow(m.GetSaveQuery(), {{ $index := 0 }}{{ range $key, $column := .Columns }}{{ if or (not (system $column)) $column.IsPrimaryKey }}{{ if $index }}, {{ end }}&m.{{ $column.ModelName }}{{ $index = inc $index }}{{ end}}{{ end}}).
 	    Scan({{ $index := 0 }}{{ range $key, $column := .Columns }}{{ if (system $column) }}{{ if $index }}, {{ end }}&m.{{ $column.ModelName }}{{ $index = inc $index }}{{ end}}{{ end}})
 
 	if err != nil {
@@ -407,13 +407,12 @@ func (m *{{ .Model }}) GetSaveQuery() string {
 	return ParseCrudMethodTemplate(t, model, table, columns)
 }
 
-//  {{ $index := 0 }}{{ range $key, $column := .Columns }}{{ if (identifier $column) }}{{ if $index }}, {{ end }}{{ $index = inc $index }}[]{{ $column.ModelType }}{{ end }}{{ end }}
 // Get model searcher
 func getModelSearcher(model string, table string, columns Columns) (bytes.Buffer, error) {
 	t := `// Search by filer
-func (m *{{ .Model }}) Search(dbo *godb.DBO, filter godb.SqlFilter) (*[]{{ .Model }}, {{ $index := 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }}, {{ end }}{{ $index = inc $index }}[]{{ $column.ModelType }}{{ end }}{{ end }}, error) {
+func Search{{ .Model }}(q godb.Queryer, filter godb.SqlFilter) (*[]{{ .Model }}, {{ $index := 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }}, {{ end }}{{ $index = inc $index }}[]{{ $column.ModelType }}{{ end }}{{ end }}, error) {
 	query := fmt.Sprintf("SELECT " + strings.Join(m.Columns(), ",") + " FROM {{ .Table }} %s", filter.GetWithWhere())
-	rows, err := dbo.Query(query, filter.GetArguments()...)
+	rows, err := q.Query(query, filter.GetArguments()...)
 	{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}
 	entity{{ $column.ModelName }}s := make([]{{ $column.ModelType }}, 0){{ end }}{{ end }}
 	if err != nil {
