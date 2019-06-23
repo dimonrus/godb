@@ -72,6 +72,16 @@ func (dbo *DBO) QueryRow(query string, args ...interface{}) *sql.Row {
 	return dbo.DB.QueryRowContext(context.Background(), query, args...)
 }
 
+// Prepare statement
+func (dbo *DBO) Prepare(query string) (*SqlStmt, error) {
+	if strings.Contains(query, "?") {
+		query = preparePositionalArgsQuery(query)
+	}
+	stmt, err := dbo.DB.PrepareContext(context.Background(), query)
+
+	return &SqlStmt{stmt, dbo.Options, query}, err
+}
+
 // Begin transaction
 func (dbo *DBO) Begin() (*SqlTx, error) {
 	tx, err := dbo.DB.BeginTx(context.Background(), nil)

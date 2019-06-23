@@ -255,3 +255,34 @@ func TestDBO_ExecDelete(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestDBO_Prepare(t *testing.T) {
+	db, err := initDb()
+	if err != nil {
+		t.Fatal(err)
+	}
+	db, err = createTable(db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	stmt, err := db.Prepare("update apple_attribute set code = 'name_test_update_prp' where id = ?")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = stmt.Exec(1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	data := testData{}
+	err = db.QueryRow("select id, code from apple_attribute where id = ?", 1).Scan(&data.Id, &data.Code)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if data.Code != "name_test_update_prp" {
+		t.Fatal("wrong code")
+	}
+	err = deleteTable(db)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
