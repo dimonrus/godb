@@ -93,6 +93,12 @@ func (f *SqlFilter) AddOrder(field string, direction string) *SqlFilter {
 	return f
 }
 
+// Reset Order
+func (f *SqlFilter) ResetOrder() *SqlFilter {
+	f.orders = []sqlOrderFilter{}
+	return f
+}
+
 // Add Group
 func (f *SqlFilter) GroupBy(fields ...string) *SqlFilter {
 	f.group = append(f.group, fields...)
