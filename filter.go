@@ -29,6 +29,7 @@ type SqlFilter struct {
 	expression []sqlExpression
 	orders     []sqlOrderFilter
 	pagination sqlPaginationFilter
+	group      []string
 	arguments  []interface{}
 }
 
@@ -92,6 +93,18 @@ func (f *SqlFilter) AddOrder(field string, direction string) *SqlFilter {
 	return f
 }
 
+// Add Group
+func (f *SqlFilter) GroupBy(fields ...string) *SqlFilter {
+	f.group = append(f.group, fields...)
+	return f
+}
+
+// Reset Group
+func (f *SqlFilter) ResetGroupBy() *SqlFilter {
+	f.group = []string{}
+	return f
+}
+
 // Set pagination
 func (f *SqlFilter) SetPagination(limit int, offset int) *SqlFilter {
 	f.pagination = sqlPaginationFilter{Limit: limit, Offset: offset}
@@ -109,9 +122,14 @@ func (f SqlFilter) String() string {
 	var expressionFilters []string
 	var orders []string
 	var pagination string
+	var group string
 
 	for _, value := range f.orders {
 		orders = append(orders, value.Field+" "+value.Direction)
+	}
+
+	if len(f.group) > 0 {
+		group = "GROUP BY " + strings.Join(f.group, ", ")
 	}
 
 	if len(orders) > 0 {
@@ -130,8 +148,9 @@ func (f SqlFilter) String() string {
 		conditionFilters = append(conditionFilters, expressionFilters...)
 	}
 
-	return fmt.Sprintf("%s %s",
+	return fmt.Sprintf("%s %s %s",
 		strings.Join(conditionFilters, " AND "),
+		group,
 		pagination)
 }
 
