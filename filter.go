@@ -41,7 +41,7 @@ func (f *SqlFilter) AddOrFilters(filter ...*SqlFilter) *SqlFilter {
 		args = append(args, filter[i].GetArguments())
 		conditions = append(conditions, filter[i].String())
 	}
-	return f.AddExpression(strings.Join(conditions, " OR "), args)
+	return f.AddExpression("("+strings.Join(conditions, " OR ")+")", args)
 }
 
 // Add fileld to filter
