@@ -39,7 +39,7 @@ func (f *SqlFilter) AddOrFilters(filter ...*SqlFilter) *SqlFilter {
 	conditions := make([]string, 0, len(filter))
 	for i := range filter {
 		if filter[i].GetArguments() != nil && len(filter[i].GetArguments()) > 0 {
-			args = append(args, filter[i].GetArguments())
+			args = append(args, filter[i].GetArguments()...)
 		}
 		conditions = append(conditions, filter[i].String())
 	}
