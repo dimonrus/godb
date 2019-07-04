@@ -32,6 +32,22 @@ type SqlFilter struct {
 	arguments  []interface{}
 }
 
+//Add or filter
+func (f *SqlFilter) AddOrFilters(filter ...*SqlFilter) *SqlFilter {
+	args := []interface{}{}
+	sql := ""
+	for i, value := range filter {
+		ff := value
+		args = append(args, ff.GetArguments())
+		if i > 0 {
+			sql += " or "
+		}
+		sql += " " + ff.String() + " "
+	}
+	f.AddExpression(sql, args)
+	return f
+}
+
 // Add fileld to filter
 func (f *SqlFilter) AddFiledFilter(field string, condition string, value interface{}) *SqlFilter {
 	expression := field + " " + condition + " ?"
