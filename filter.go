@@ -34,18 +34,13 @@ type SqlFilter struct {
 
 //Add or filter
 func (f *SqlFilter) AddOrFilters(filter ...*SqlFilter) *SqlFilter {
-	args := []interface{}{}
-	sql := ""
-	for i, value := range filter {
-		ff := value
-		args = append(args, ff.GetArguments())
-		if i > 0 {
-			sql += " or "
-		}
-		sql += " " + ff.String() + " "
+	args := make([]interface{}, 0)
+	conditions := make([]string, len(filter))
+	for i := range filter {
+		args = append(args, filter[i].GetArguments())
+		conditions = append(conditions, filter[i].String())
 	}
-	f.AddExpression(sql, args)
-	return f
+	return f.AddExpression(strings.Join(conditions, " OR "), args)
 }
 
 // Add fileld to filter
