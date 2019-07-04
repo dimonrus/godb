@@ -35,7 +35,7 @@ type SqlFilter struct {
 //Add or filter
 func (f *SqlFilter) AddOrFilters(filter ...*SqlFilter) *SqlFilter {
 	args := make([]interface{}, 0)
-	conditions := make([]string, len(filter))
+	conditions := make([]string, 0, len(filter))
 	for i := range filter {
 		args = append(args, filter[i].GetArguments())
 		conditions = append(conditions, filter[i].String())
