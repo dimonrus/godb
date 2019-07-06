@@ -233,11 +233,9 @@ func getModelParser(model string, table string, columns Columns) (bytes.Buffer, 
 	t := `// Parse model column
 func (m *{{ .Model }}) parse(rows *sql.Rows) (*{{ .Model }}, error) {
 	err := rows.Scan(m.Values()...)
-
 	if err != nil {
 		return nil, err
 	}
-
 	return m, nil
 }
 `
@@ -247,10 +245,8 @@ func (m *{{ .Model }}) parse(rows *sql.Rows) (*{{ .Model }}, error) {
 // Columns
 func getColumns(model string, table string, columns Columns) (bytes.Buffer, error) {
 	t := `// Model columns
-func (m *{{ .Model }}) Columns() (columns []string) {
-	columns = []string{ {{ range $key, $column := .Columns }}{{ if $key }}, {{ end }}"{{ $column.Name }}"{{ end }} }
-	
-	return columns
+func (m *{{ .Model }}) Columns() []string {
+	return []string{ {{ range $key, $column := .Columns }}{{ if $key }}, {{ end }}"{{ $column.Name }}"{{ end }} }	
 }
 `
 	return ParseCrudMethodTemplate(t, model, table, columns)
@@ -260,9 +256,7 @@ func (m *{{ .Model }}) Columns() (columns []string) {
 func getValues(model string, table string, columns Columns) (bytes.Buffer, error) {
 	t := `// Model values
 func (m *{{ .Model }}) Values() (values []interface{}) {
-	values = append(values, {{ range $key, $column := .Columns }}{{ if $key }}, {{ end }}&m.{{ $column.ModelName }}{{ end }})
-	
-	return values
+	return append(values, {{ range $key, $column := .Columns }}{{ if $key }}, {{ end }}&m.{{ $column.ModelName }}{{ end }})
 }
 `
 	return ParseCrudMethodTemplate(t, model, table, columns)
@@ -299,26 +293,24 @@ func ParseCrudMethodTemplate(t string, model string, table string, columns Colum
 func getModelLoader(model string, table string, columns Columns) (bytes.Buffer, error) {
 	t := `// SQL load Query
 func (m *{{ .Model }}) GetLoadQuery() string {
-	columns := strings.Join(m.Columns(), ",")
-	return "SELECT " + columns + " FROM {{ .Table }} WHERE {{ $index := 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }} AND {{ end }}{{ $index = inc $index }}{{ $column.Name }} = ${{ $index }}{{ end }}{{ end }};"
+	return "SELECT " + strings.Join(m.Columns(), ",") + " FROM {{ .Table }} WHERE {{ $index := 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }} AND {{ end }}{{ $index = inc $index }}{{ $column.Name }} = ${{ $index }}{{ end }}{{ end }};"
 }
 // Load method
 func (m *{{ .Model }}) Load(q godb.Queryer) (*{{ .Model }}, error) {
 	if {{ $index := 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }} && {{ end }}{{ $index = inc $index }} m.{{ $column.ModelName }} != {{ if eq $column.ModelType "string" }}""{{ else }}0{{ end }}{{ end }}{{ end }} {
 		iterator, err := q.Query(m.GetLoadQuery(), {{ $index := 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }}, {{ end }}{{ $index = inc $index }}m.{{ $column.ModelName }}{{ end }}{{ end }})
-
 		if err != nil && err != sql.ErrNoRows {
 			return nil, err
 		}
+		if iterator == nil {
+			return nil, errors.New("iterator is nil, nothing for load")
+		}
 		defer iterator.Close()
-
 		if iterator.Next() == false {
 			return nil, nil
 		}
-
 		return m.parse(iterator)
 	}
-
 	return nil, errors.New("no primary key specified, nothing for load")
 }
 `
@@ -334,7 +326,6 @@ func (m *{{ .Model }}) GetDeleteQuery() string {
 // Delete method
 func (m *{{ .Model }}) Delete(q godb.Queryer) error {
 	_, err := q.Exec(m.GetDeleteQuery(), {{ $index := 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }}, {{ end }}{{ $index = inc $index }}m.{{ $column.ModelName }}{{ end }}{{ end }})
-
 	return err
 }
 `
@@ -375,11 +366,9 @@ func (m *{{ .Model }}) Save(q godb.Queryer) (*{{ .Model }}, error) {
 func (m *{{ .Model }}) Save(q godb.Queryer) (*{{ .Model }}, error) {
 	err := q.QueryRow(m.GetSaveQuery(), {{ $index := 0 }}{{ range $key, $column := .Columns }}{{ if or (not (system $column)) $column.IsPrimaryKey }}{{ if $index }}, {{ end }}&m.{{ $column.ModelName }}{{ $index = inc $index }}{{ end}}{{ end}}).
 	    Scan({{ $index := 0 }}{{ range $key, $column := .Columns }}{{ if (system $column) }}{{ if $index }}, {{ end }}&m.{{ $column.ModelName }}{{ $index = inc $index }}{{ end}}{{ end}})
-
 	if err != nil {
 		return nil, err
 	}
-
 	return m, nil
 }
 `
