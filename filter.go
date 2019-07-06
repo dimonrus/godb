@@ -38,7 +38,9 @@ func (f *SqlFilter) AddOrFilters(filter ...*SqlFilter) *SqlFilter {
 	args := make([]interface{}, 0)
 	conditions := make([]string, 0, len(filter))
 	for i := range filter {
-		args = append(args, filter[i].GetArguments())
+		if filter[i].GetArguments() != nil && len(filter[i].GetArguments()) > 0 {
+			args = append(args, filter[i].GetArguments()...)
+		}
 		conditions = append(conditions, filter[i].String())
 	}
 	return f.AddExpression("("+strings.Join(conditions, " OR ")+")", args)
