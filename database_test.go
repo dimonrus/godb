@@ -67,7 +67,7 @@ func initDb() (*DBO, error) {
 }
 
 func createTable(db *DBO) (*DBO, error) {
-	_, err := db.Exec("create table if not exists apple_attribute (id serial not null, code text not null);")
+	_, err := db.Exec("create table if not exists apple_attribute (id serial not null primary key, code text not null);")
 	if err != nil {
 		return db, err
 	}
@@ -77,6 +77,20 @@ func createTable(db *DBO) (*DBO, error) {
 
 func deleteTable(db *DBO) error {
 	_, err := db.Exec("DROP TABLE IF EXISTS apple_attribute")
+	return err
+}
+
+func createForeignTable(db *DBO) (*DBO, error) {
+	_, err := db.Exec("create table if not exists apple_property (id serial not null primary key, name text not null, attribute_id int not null references apple_attribute(id));")
+	if err != nil {
+		return db, err
+	}
+	_, err = db.Exec("insert into apple_property (name, attribute_id) values ('one apple', 1)")
+	return db, err
+}
+
+func deleteForeignTable(db *DBO) error {
+	_, err := db.Exec("DROP TABLE IF EXISTS apple_property")
 	return err
 }
 
@@ -280,6 +294,37 @@ func TestDBO_Prepare(t *testing.T) {
 	}
 	if data.Code != "name_test_update_prp" {
 		t.Fatal("wrong code")
+	}
+	err = deleteTable(db)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestMakeModel(t *testing.T) {
+	db, err := initDb()
+	if err != nil {
+		t.Fatal(err)
+	}
+	db, err = createTable(db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	db, err = createForeignTable(db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = MakeModel(db, "models", "public", "apple_attribute")
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = MakeModel(db, "models", "public", "apple_property")
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = deleteForeignTable(db)
+	if err != nil {
+		t.Fatal(err)
 	}
 	err = deleteTable(db)
 	if err != nil {

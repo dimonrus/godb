@@ -192,12 +192,17 @@ func MakeModel(db *DBO, path string, schema string, table string) error {
 // Create file in os
 func CreateModelFile(schema string, table string, path string) (*os.File, string, error) {
 	fileName := fmt.Sprintf("%s", table)
-	folderPath := fmt.Sprintf(path)
-	err := os.MkdirAll(folderPath, os.ModePerm)
-	if err != nil {
-		return nil, "", err
+	var filePath string
+	if path != "" {
+		folderPath := fmt.Sprintf(path)
+		err := os.MkdirAll(folderPath, os.ModePerm)
+		if err != nil {
+			return nil, "", err
+		}
+		filePath = fmt.Sprintf("%s/%s.go", folderPath, fileName)
+	} else {
+		filePath = fmt.Sprintf("%s.go", fileName)
 	}
-	filePath := fmt.Sprintf("%s/%s.go", folderPath, fileName)
 
 	f, err := os.Create(filePath)
 	if err != nil {
@@ -338,10 +343,11 @@ func (m *{{ .Model }}) Load(q godb.Queryer) (*{{ .Model }}, error) {
 func getForeignModels(model string, table string, columns Columns) (bytes.Buffer, error) {
 	t := `
 {{ range $key, $column := .Columns }}{{ if $column.ForeignTable }}
-// Load method
-func (m *{{ .Model }}) Get{{ $column.ForeignTable | cameled }}(q godb.Queryer) (*{{ $column.ForeignTable | cameled }}, error) {
-	return nil, errors.New("no primary key specified, nothing for load")
-}{{ end }}
+// Load Foreign Model {{ cameled $column.ForeignTable }}
+func (m *{{ $.Model }}) Get{{ cameled $column.ForeignTable }}(q godb.Queryer) (*{{ cameled $column.ForeignTable }}, error) {
+	return (&{{ cameled $column.ForeignTable }} { {{ cameled $column.ForeignColumnName}}:m.{{ $column.ModelName }} }).Load(q)
+}
+{{ end }}{{ end }}
 `
 	return ParseCrudMethodTemplate(t, model, table, columns)
 }
