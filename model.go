@@ -16,18 +16,20 @@ var dbo *DBO
 
 // Column information
 type Column struct {
-	Name         string  // DB column name
-	ModelName    string  // Model name
-	Default      *string // DB default value
-	IsNullable   bool    // DB is nullable
-	DataType     string  // DB column type
-	ModelType    string  // Model type
-	Schema       string  // DB Schema
-	Table        string  // DB table
-	Sequence     *string // DB sequence
-	IsPrimaryKey bool    // DB is primary key
-	Json         string  // Model Json name
-	Import       string  // Model Import custom lib
+	Name              string  // DB column name
+	ModelName         string  // Model name
+	Default           *string // DB default value
+	IsNullable        bool    // DB is nullable
+	DataType          string  // DB column type
+	ModelType         string  // Model type
+	Schema            string  // DB Schema
+	Table             string  // DB table
+	Sequence          *string // DB sequence
+	ForeignTable      *string // DB foreign table name
+	ForeignColumnName *string // DB foreign column name
+	IsPrimaryKey      bool    // DB is primary key
+	Json              string  // Model Json name
+	Import            string  // Model Import custom lib
 }
 
 // Array of columns
@@ -45,6 +47,8 @@ func parseColumnRow(rows *sql.Rows) (*Column, error) {
 		&column.IsPrimaryKey,
 		&column.Default,
 		&column.Sequence,
+		&column.ForeignTable,
+		&column.ForeignColumnName,
 	)
 
 	if err != nil {
@@ -64,20 +68,26 @@ SELECT a.attname                                                                
        t.relname                                                                       AS table,
        CASE WHEN max(i.indisprimary::int)::BOOLEAN THEN TRUE ELSE FALSE END            AS is_primary,
        ic.column_default,
-       pg_get_serial_sequence(ic.table_schema || '.' || ic.table_name, ic.column_name) AS sequence
+       pg_get_serial_sequence(ic.table_schema || '.' || ic.table_name, ic.column_name) AS sequence,
+       ccu.table_name                                                                  AS foreign_table,
+       ccu.column_name                                                                 AS foreign_column_name
 FROM pg_attribute a
-       JOIN pg_class t ON a.attrelid = t.oid
-
-       JOIN pg_namespace s ON t.relnamespace = s.oid
-       LEFT JOIN pg_index i ON i.indrelid = a.attrelid AND a.attnum = ANY (i.indkey)
-       LEFT JOIN information_schema.columns AS ic
-                 ON ic.column_name = a.attname AND ic.table_name = t.relname AND ic.table_schema = s.nspname
+         JOIN pg_class t ON a.attrelid = t.oid
+         JOIN pg_namespace s ON t.relnamespace = s.oid
+         LEFT JOIN pg_index i ON i.indrelid = a.attrelid AND a.attnum = ANY (i.indkey)
+         LEFT JOIN information_schema.columns AS ic
+                   ON ic.column_name = a.attname AND ic.table_name = t.relname AND ic.table_schema = s.nspname
+         LEFT JOIN information_schema.key_column_usage AS kcu
+                   ON kcu.table_name = t.relname AND kcu.column_name = a.attname
+         LEFT JOIN information_schema.table_constraints AS tc
+                   ON tc.constraint_name = kcu.constraint_name AND tc.constraint_type = 'FOREIGN KEY'
+         LEFT JOIN information_schema.constraint_column_usage AS ccu ON ccu.constraint_name = tc.constraint_name
 WHERE a.attnum > 0
   AND NOT a.attisdropped
   AND s.nspname = '%s'
   AND t.relname = '%s'
 GROUP BY a.attname, a.atttypid, a.atttypmod, a.attnotnull, s.nspname, t.relname, ic.column_default,
-         ic.table_schema, ic.table_name, ic.column_name, a.attnum
+         ic.table_schema, ic.table_name, ic.column_name, a.attnum, ccu.table_name, ccu.column_name
 ORDER BY a.attnum;
 `, schema, table)
 
@@ -273,6 +283,13 @@ func ParseCrudMethodTemplate(t string, model string, table string, columns Colum
 			return gohelp.ExistsInArrayString(column.Name, []string{"updated_at", "created_at", "deleted_at"}) ||
 				(column.IsPrimaryKey && column.Sequence != nil)
 		},
+		"cameled": func(name string) string {
+			cameled, err := gohelp.ToCamelCase(name, true)
+			if err != nil {
+				panic(err)
+			}
+			return cameled
+		},
 	}
 
 	tml := template.Must(template.New("").Funcs(funcMap).Parse(t))
@@ -313,6 +330,18 @@ func (m *{{ .Model }}) Load(q godb.Queryer) (*{{ .Model }}, error) {
 	}
 	return nil, errors.New("no primary key specified, nothing for load")
 }
+`
+	return ParseCrudMethodTemplate(t, model, table, columns)
+}
+
+// Get model loader
+func getForeignModels(model string, table string, columns Columns) (bytes.Buffer, error) {
+	t := `
+{{ range $key, $column := .Columns }}{{ if $column.ForeignTable }}
+// Load method
+func (m *{{ .Model }}) Get{{ $column.ForeignTable | cameled }}(q godb.Queryer) (*{{ $column.ForeignTable | cameled }}, error) {
+	return nil, errors.New("no primary key specified, nothing for load")
+}{{ end }}
 `
 	return ParseCrudMethodTemplate(t, model, table, columns)
 }
@@ -493,6 +522,11 @@ func CreateModel(schema string, table string, path string) error {
 		return err
 	}
 
+	foreign, err := getForeignModels(modelName, tableName, *columns)
+	if err != nil {
+		return err
+	}
+
 	deleter, err := getModelDeleter(modelName, tableName, *columns)
 	if err != nil {
 		return err
@@ -534,6 +568,11 @@ func CreateModel(schema string, table string, path string) error {
 	}
 
 	_, err = file.Write(loader.Bytes())
+	if err != nil {
+		return err
+	}
+
+	_, err = file.Write(foreign.Bytes())
 	if err != nil {
 		return err
 	}
