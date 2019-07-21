@@ -24,7 +24,7 @@ type ConnectionConfig struct {
 
 // Postgres connection config
 type PostgresConnectionConfig struct {
-	ConnectionConfig
+	ConnectionConfig `yaml:",inline"`
 	SSLMode          string `yaml:"sslMode"`
 	BinaryParameters bool   `yaml:"binaryParameters"`
 }
