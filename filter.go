@@ -28,9 +28,9 @@ type sqlPagination struct {
 type SqlFilter struct {
 	expression []sqlExpression
 	orders     []sqlOrder
-	pagination sqlPagination
 	group      []string
 	arguments  []interface{}
+	pagination sqlPagination
 }
 
 //Add or filter
@@ -46,7 +46,7 @@ func (f *SqlFilter) AddOrFilters(filter ...*SqlFilter) *SqlFilter {
 	return f.AddExpression("("+strings.Join(conditions, " OR ")+")", args)
 }
 
-// Add fileld to filter
+// Add filed to filter
 func (f *SqlFilter) AddFiledFilter(field string, condition string, value interface{}) *SqlFilter {
 	expression := field + " " + condition + " ?"
 	f.expression = append(f.expression, sqlExpression{
@@ -89,7 +89,7 @@ func (f *SqlFilter) AddExpression(expression string, values []interface{}) *SqlF
 	f.expression = append(f.expression, sqlExpression{
 		Expression: expression,
 	})
-	if values != nil && len(values) > 0 {
+	if len(values) > 0 {
 		f.arguments = append(f.arguments, values...)
 	}
 	return f

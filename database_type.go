@@ -26,6 +26,13 @@ type Connection interface {
 	GetMaxIdleConns() int
 }
 
+// Migration file interface
+type IMigrationFile interface {
+	Up(tx *SqlTx) error
+	Down(tx *SqlTx) error
+	GetVersion() string
+}
+
 // Database Object Options
 type Options struct {
 	Debug  bool
@@ -50,4 +57,13 @@ type SqlStmt struct {
 	*sql.Stmt
 	Options
 	query string
+}
+
+// Migration struct
+type Migration struct {
+	Path     string
+	DBO      *DBO
+	Config   ConnectionConfig
+	Options  Options
+	Registry map[string][]IMigrationFile
 }
