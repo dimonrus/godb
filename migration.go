@@ -180,10 +180,14 @@ func (m {{ .MigrationTypeName }}) GetVersion () string {
 
 func (m {{ .MigrationTypeName }}) Up (tx *godb.SqlTx) error {
 	// write code here
+
+	return nil
 }
 
 func (m {{ .MigrationTypeName }}) Down (tx *godb.SqlTx) error {
 	// write code here
+
+	return nil
 }
 `))
 	return migrationTemplate
