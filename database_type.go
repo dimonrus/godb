@@ -64,9 +64,10 @@ type MigrationRegistry map[string][]IMigrationFile
 
 // Migration struct
 type Migration struct {
-	RegistryPath  string
+	MigrationPath string
 	DBO           *DBO
 	Config        ConnectionConfig
 	Registry      *MigrationRegistry
+	RegistryPath  string
 	RegistryXPath string
 }

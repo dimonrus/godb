@@ -123,7 +123,7 @@ func (m *Migration) InitMigration(class string) error {
 // Create migration file
 func (m *Migration) CreateMigrationFile(class string, name string) error {
 	fileName := fmt.Sprintf("m_%v_%s", time.Now().Unix(), name)
-	folderPath := fmt.Sprintf("%s/%s", m.RegistryPath, class)
+	folderPath := fmt.Sprintf("%s/%s", m.MigrationPath, class)
 	err := os.MkdirAll(folderPath, os.ModePerm)
 	if err != nil {
 		return err
@@ -178,11 +178,11 @@ func (m {{ .MigrationTypeName }}) GetVersion () string {
 	return "{{ .MigrationTypeName }}"
 }
 
-func (m {{ .MigrationTypeName }}) Up (tx *godb.SqlTx) {
+func (m {{ .MigrationTypeName }}) Up (tx *godb.SqlTx) error {
 	// write code here
 }
 
-func (m {{ .MigrationTypeName }}) Down (tx *godb.SqlTx) {
+func (m {{ .MigrationTypeName }}) Down (tx *godb.SqlTx) error {
 	// write code here
 }
 `))
