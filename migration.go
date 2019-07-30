@@ -19,7 +19,7 @@ func (m *Migration) Upgrade(class string) error {
 		// Check migration that already applied
 		query := fmt.Sprintf("SELECT apply_time FROM migration_%s WHERE version = $1", class)
 		err = m.DBO.QueryRow(query, migration.GetVersion()).Scan(&applyTime)
-		if err != nil {
+		if err != nil && err != sql.ErrNoRows {
 			return err
 		}
 		// If already applied continue
@@ -57,7 +57,7 @@ func (m *Migration) Downgrade(class string, version string) error {
 		// Check migration that already applied
 		query := fmt.Sprintf("SELECT apply_time FROM migration_%s WHERE version = $1", class)
 		err := m.DBO.QueryRow(query, migration.GetVersion()).Scan(&applyTime)
-		if err != nil {
+		if err != nil && err != sql.ErrNoRows {
 			return err
 		}
 		// If no migration found
