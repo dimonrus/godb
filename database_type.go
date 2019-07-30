@@ -59,11 +59,14 @@ type SqlStmt struct {
 	query string
 }
 
+// Migration registry
+type MigrationRegistry map[string][]IMigrationFile
+
 // Migration struct
 type Migration struct {
 	RegistryPath  string
 	DBO           *DBO
 	Config        ConnectionConfig
-	Registry      *map[string][]IMigrationFile
+	Registry      *MigrationRegistry
 	RegistryXPath string
 }
