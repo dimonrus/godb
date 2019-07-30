@@ -10,7 +10,7 @@ import (
 
 // Upgrade
 func (m *Migration) Upgrade(class string) error {
-	for _, migration := range m.Registry[class] {
+	for _, migration := range (*m.Registry)[class] {
 		tx, err := m.DBO.Begin()
 		if err != nil {
 			return err
@@ -50,7 +50,7 @@ func (m *Migration) Upgrade(class string) error {
 // Downgrade
 func (m *Migration) Downgrade(class string, version string) error {
 	var applyTime uint64
-	for _, migration := range m.Registry[class] {
+	for _, migration := range (*m.Registry)[class] {
 		if migration.GetVersion() != version {
 			continue
 		}
@@ -123,7 +123,7 @@ func (m *Migration) InitMigration(class string) error {
 // Create migration file
 func (m *Migration) CreateMigrationFile(class string, name string) error {
 	fileName := fmt.Sprintf("m_%v_%s", time.Now().Unix(), name)
-	folderPath := fmt.Sprintf("%s/%s", m.Path, class)
+	folderPath := fmt.Sprintf("%s/%s", m.RegistryPath, class)
 	err := os.MkdirAll(folderPath, os.ModePerm)
 	if err != nil {
 		return err
@@ -136,52 +136,53 @@ func (m *Migration) CreateMigrationFile(class string, name string) error {
 	}
 	defer f.Close()
 
-	migrationTemplate := m.GetTemplate(class)
+	migrationTemplate := m.GetTemplate()
 
 	err = migrationTemplate.Execute(f, struct {
 		Class             string
 		MigrationTypeName string
+		RegistryPath      string
+		RegistryXPath     string
 	}{
 		Class:             class,
 		MigrationTypeName: fileName,
+		RegistryPath:      m.RegistryPath,
+		RegistryXPath:     m.RegistryXPath,
 	})
 	if err != nil {
 		return err
 	}
 
-	m.Options.Logger.Printf("Migration created: %s", filePath)
+	m.DBO.Logger.Printf("Migration created: %s", filePath)
 
 	return nil
 }
 
-func (m *Migration) GetTemplate(class string) *template.Template {
+func (m *Migration) GetTemplate() *template.Template {
 	var migrationTemplate = template.Must(template.New("").
 		Parse(`// {{ .Class }} Migration file
 package {{ .Class }}
 
 import (
 	"github.com/dimonrus/godb"
-	"idn/app/component/db/migrations"
+	"{{ .RegistryPath }}"
 )
 
 type {{ .MigrationTypeName }} struct {}
 
 func init() {
-	base.App.GetMigration().Registry["{{ .Class }}"] = append(
-		base.App.GetMigration().Registry["{{ .Class }}"], 
-		{{ .MigrationTypeName }}{}
-	)
+	{{ .RegistryXPath }}["{{ .Class }}"] = append({{ .RegistryXPath }}["{{ .Class }}"], {{ .MigrationTypeName }}{})
 }
 
 func (m {{ .MigrationTypeName }}) GetVersion () string {
 	return "{{ .MigrationTypeName }}"
 }
 
-func (m {{ .MigrationTypeName }}) Up (q godb.Queryer) {
+func (m {{ .MigrationTypeName }}) Up (tx *godb.SqlTx) {
 	// write code here
 }
 
-func (m {{ .MigrationTypeName }}) Down (q godb.Queryer) {
+func (m {{ .MigrationTypeName }}) Down (tx *godb.SqlTx) {
 	// write code here
 }
 `))

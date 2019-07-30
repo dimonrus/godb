@@ -61,9 +61,9 @@ type SqlStmt struct {
 
 // Migration struct
 type Migration struct {
-	Path     string
-	DBO      *DBO
-	Config   ConnectionConfig
-	Options  Options
-	Registry map[string][]IMigrationFile
+	RegistryPath  string
+	DBO           *DBO
+	Config        ConnectionConfig
+	Registry      *map[string][]IMigrationFile
+	RegistryXPath string
 }
