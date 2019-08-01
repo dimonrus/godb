@@ -488,7 +488,12 @@ func CreateModel(schema string, table string, path string) error {
 	}
 
 	// Name of the model
-	modelName, err := gohelp.ToCamelCase(table, true)
+	name := table
+	if schema != "public" {
+		name = schema + "_" + table
+	}
+
+	modelName, err := gohelp.ToCamelCase(name, true)
 	if err != nil {
 		return err
 	}
@@ -497,7 +502,7 @@ func CreateModel(schema string, table string, path string) error {
 	tableName := fmt.Sprintf("%s.%s", schema, table)
 
 	//create file
-	file, path, err := CreateModelFile(schema, table, path)
+	file, path, err := CreateModelFile(schema, name, path)
 	if err != nil {
 		return err
 	}
