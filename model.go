@@ -244,7 +244,7 @@ import ({{ range $key, $import := .Imports }}{{ $import }}
 // Get model struct
 func getModelStruct(model string, table string, columns Columns) (bytes.Buffer, error) {
 	t := `type {{ .Model }} struct { {{ range $key, $column := .Columns }}
-	{{ $column.ModelName }} {{ $column.ModelType }} {{ $column.Json }} {{ if $column.Description }}// {{ if $column.Description }}{{ end }}{{ end }}
+	{{ $column.ModelName }} {{ $column.ModelType }} {{ $column.Json }} {{ if $column.Description }}// {{ $column.Description }}{{ end }}{{ end }}
 }
 `
 	return ParseCrudMethodTemplate(t, model, table, columns)
