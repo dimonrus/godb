@@ -151,27 +151,27 @@ func getDictionaryTemplate() *template.Template {
 package {{ .Package }}
 
 const ({{$dType := ""}}
-	{{ range $item := .Dictionaries }}{{if ne $dType $item.GetDictionaryType}}{{$dType = $item.GetDictionaryType}}
-{{ end }}{{ $item.GetDictionaryType | camelCase }}{{ $item.GetCode | camelCase }} = {{ $item.Id }}
+	{{ range $item := .Dictionaries }}{{if ne $dType $item.Type}}{{$dType = $item.Type}}
+{{ end }}{{ $item.Type | camelCase }}{{ $item.Code | camelCase }} = {{ $item.Id }}
 {{ end }}
-	{{ range $item := .Dictionaries }}{{if ne $dType $item.GetDictionaryType}}{{$dType = $item.GetDictionaryType}}
-{{ end }}{{ $item.GetDictionaryType | camelCase }}{{ $item.GetCode | camelCase }}Code = "{{ $item.GetCode }}"
+	{{ range $item := .Dictionaries }}{{if ne $dType $item.Type}}{{$dType = $item.Type}}
+{{ end }}{{ $item.Type | camelCase }}{{ $item.Code | camelCase }}Code = "{{ $item.Code }}"
 {{ end }}
 )
 
 var ({{$dType = ""}}
 	{{ range $item := .Dictionaries }}
-		{{if ne $dType $item.GetDictionaryType}}{{ if ne $dType ""}} } {{ end }}
-			{{$dType = $item.GetDictionaryType}}
-			Identifier{{ $item.GetDictionaryType | camelCase }}Map = map[int]string {
-			{{ $item.GetDictionaryType | camelCase }}{{ $item.GetCode | camelCase }}: {{ $item.GetDictionaryType | camelCase }}{{ $item.GetCode | camelCase }}Code,{{ else }}{{ $item.GetDictionaryType | camelCase }}{{ $item.GetCode | camelCase }}: {{ $item.GetDictionaryType | camelCase }}{{ $item.GetCode | camelCase }}Code,{{ end }}{{ end }}
+		{{if ne $dType $item.Type}}{{ if ne $dType ""}} } {{ end }}
+			{{$dType = $item.Type}}
+			Identifier{{ $item.Type | camelCase }}Map = map[int]string {
+			{{ $item.Type | camelCase }}{{ $item.Code | camelCase }}: {{ $item.Type | camelCase }}{{ $item.Code | camelCase }}Code,{{ else }}{{ $item.Type | camelCase }}{{ $item.Code | camelCase }}: {{ $item.Type | camelCase }}{{ $item.Code | camelCase }}Code,{{ end }}{{ end }}
 }
 {{$dType = ""}}
 	{{ range $item := .Dictionaries }}
-		{{if ne $dType $item.GetDictionaryType}}{{ if ne $dType ""}} } {{ end }}
-			{{$dType = $item.GetDictionaryType}}
-			Code{{ $item.GetDictionaryType | camelCase }}Map = map[string]int {
-			{{ $item.GetDictionaryType | camelCase }}{{ $item.GetCode | camelCase }}Code: {{ $item.GetDictionaryType | camelCase }}{{ $item.GetCode | camelCase }},{{ else }}{{ $item.GetDictionaryType | camelCase }}{{ $item.GetCode | camelCase }}Code: {{ $item.GetDictionaryType | camelCase }}{{ $item.GetCode | camelCase }},{{ end }}{{ end }}
+		{{if ne $dType $item.Type}}{{ if ne $dType ""}} } {{ end }}
+			{{$dType = $item.Type}}
+			Code{{ $item.Type | camelCase }}Map = map[string]int {
+			{{ $item.Type | camelCase }}{{ $item.Code | camelCase }}Code: {{ $item.Type | camelCase }}{{ $item.Code | camelCase }},{{ else }}{{ $item.Type | camelCase }}{{ $item.Code | camelCase }}Code: {{ $item.Type | camelCase }}{{ $item.Code | camelCase }},{{ end }}{{ end }}
 }
 )`))
 	return dictionaryTemplate
