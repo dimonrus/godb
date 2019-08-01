@@ -25,8 +25,10 @@ type Column struct {
 	Schema            string  // DB Schema
 	Table             string  // DB table
 	Sequence          *string // DB sequence
+	ForeignSchema     *string // DB foreign schema name
 	ForeignTable      *string // DB foreign table name
 	ForeignColumnName *string // DB foreign column name
+	Description       *string // DB column description
 	IsPrimaryKey      bool    // DB is primary key
 	Json              string  // Model Json name
 	Import            string  // Model Import custom lib
@@ -47,8 +49,10 @@ func parseColumnRow(rows *sql.Rows) (*Column, error) {
 		&column.IsPrimaryKey,
 		&column.Default,
 		&column.Sequence,
+		&column.ForeignSchema,
 		&column.ForeignTable,
 		&column.ForeignColumnName,
+		&column.Description,
 	)
 
 	if err != nil {
@@ -69,8 +73,10 @@ SELECT a.attname                                                                
        CASE WHEN max(i.indisprimary::int)::BOOLEAN THEN TRUE ELSE FALSE END            AS is_primary,
        ic.column_default,
        pg_get_serial_sequence(ic.table_schema || '.' || ic.table_name, ic.column_name) AS sequence,
-       ccu.table_name                                                                  AS foreign_table,
-       ccu.column_name                                                                 AS foreign_column_name
+       max(ccu.table_schema)                                                           AS foreign_schema,
+       max(ccu.table_name)                                                             AS foreign_table,
+       max(ccu.column_name)                                                            AS foreign_column_name,
+       col_description(t.oid, ic.ordinal_position)                                     AS description
 FROM pg_attribute a
          JOIN pg_class t ON a.attrelid = t.oid
          JOIN pg_namespace s ON t.relnamespace = s.oid
@@ -87,9 +93,8 @@ WHERE a.attnum > 0
   AND s.nspname = '%s'
   AND t.relname = '%s'
 GROUP BY a.attname, a.atttypid, a.atttypmod, a.attnotnull, s.nspname, t.relname, ic.column_default,
-         ic.table_schema, ic.table_name, ic.column_name, a.attnum, ccu.table_name, ccu.column_name
-ORDER BY a.attnum;
-`, schema, table)
+         ic.table_schema, ic.table_name, ic.column_name, a.attnum, t.oid, ic.ordinal_position
+ORDER BY a.attnum;`, schema, table)
 
 	rows, err := dbo.Query(query)
 	if err != nil {
@@ -239,7 +244,7 @@ import ({{ range $key, $import := .Imports }}{{ $import }}
 // Get model struct
 func getModelStruct(model string, table string, columns Columns) (bytes.Buffer, error) {
 	t := `type {{ .Model }} struct { {{ range $key, $column := .Columns }}
-	{{ $column.ModelName }} {{ $column.ModelType }} {{ $column.Json }}{{ end }}
+	{{ $column.ModelName }} {{ $column.ModelType }} {{ $column.Json }} {{ if $column.Description }}// {{ if $column.Description }}{{ end }}{{ end }}
 }
 `
 	return ParseCrudMethodTemplate(t, model, table, columns)
