@@ -1,19 +1,66 @@
 package godb
 
 import (
+	"database/sql"
 	"fmt"
 	"github.com/dimonrus/gohelp"
 	"os"
 	"os/exec"
 	"strings"
 	"text/template"
+	"time"
 )
 
-// Dictionary model interface
-type IDictionaryMapping interface {
-	Search(db *DBO, filter SqlFilter) ([]IDictionaryMapping, []int64, error)
-	GetDictionaryType() string
-	GetCode() string
+type DictionaryModel struct {
+	Id        int        `json:"id"`        // Идентификатор значения справочника
+	Type      string     `json:"type"`      // Тип значения справочника
+	Code      string     `json:"code"`      // Код значения справочника
+	Label     *string    `json:"label"`     // Описание значения справочника
+	CreatedAt time.Time  `json:"createdAt"` // Время создания записи
+	UpdatedAt *time.Time `json:"updatedAt"` // Время обновления записи
+	DeletedAt *time.Time `json:"deletedAt"` // Время удаления записи
+}
+
+// Model columns
+func (m *DictionaryModel) Columns() []string {
+	return []string{"id", "type", "code", "label", "created_at", "updated_at", "deleted_at"}
+}
+
+// Model values
+func (m *DictionaryModel) Values() (values []interface{}) {
+	return append(values, &m.Id, &m.Type, &m.Code, &m.Label, &m.CreatedAt, &m.UpdatedAt, &m.DeletedAt)
+}
+
+// Parse model column
+func (m *DictionaryModel) parse(rows *sql.Rows) (*DictionaryModel, error) {
+	err := rows.Scan(m.Values()...)
+	if err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+// Search by filer
+func (m *DictionaryModel) SearchDictionary(q Queryer, filter SqlFilter) (*[]DictionaryModel, []int, error) {
+	query := fmt.Sprintf("SELECT "+strings.Join((&DictionaryModel{}).Columns(), ",")+" FROM public.dictionary %s", filter.GetWithWhere())
+	rows, err := q.Query(query, filter.GetArguments()...)
+
+	entityIds := make([]int, 0)
+	if err != nil {
+		return nil, entityIds, err
+	}
+	defer rows.Close()
+	var result []DictionaryModel
+	for rows.Next() {
+		row, err := (&DictionaryModel{}).parse(rows)
+		if err != nil {
+			return &result, entityIds, err
+		}
+
+		entityIds = append(entityIds, row.Id)
+		result = append(result, *row)
+	}
+	return &result, entityIds, nil
 }
 
 // Create Table
@@ -21,17 +68,24 @@ func CreateDictionaryTable(db *DBO) error {
 	query := `
 CREATE TABLE IF NOT EXISTS dictionary
 (
-  id         INT  PRIMARY KEY    NOT NULL,
-  type       TEXT                NOT NULL,
-  code       TEXT                NOT NULL,
+  id         INT PRIMARY KEY                                 NOT NULL,
+  type       TEXT                                            NOT NULL,
+  code       TEXT                                            NOT NULL,
   label      TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT localtimestamp NOT NULL,
   updated_at TIMESTAMP WITH TIME ZONE,
   deleted_at TIMESTAMP WITH TIME ZONE
 );
 
-CREATE INDEX IF NOT EXISTS dictionary_type_idx
-  ON dictionary (type);`
+COMMENT ON COLUMN dictionary.id IS 'Идентификатор значения справочника';
+COMMENT ON COLUMN dictionary.type IS 'Тип значения справочника';
+COMMENT ON COLUMN dictionary.code IS 'Код значения справочника';
+COMMENT ON COLUMN dictionary.label IS 'Описание значения справочника';
+COMMENT ON COLUMN dictionary.created_at IS 'Время создания записи';
+COMMENT ON COLUMN dictionary.updated_at IS 'Время обновления записи';
+COMMENT ON COLUMN dictionary.deleted_at IS 'Время удваления записи';
+
+CREATE INDEX IF NOT EXISTS dictionary_type_idx ON dictionary (type);`
 
 	_, err := db.Exec(query)
 	if err != nil {
@@ -42,12 +96,12 @@ CREATE INDEX IF NOT EXISTS dictionary_type_idx
 }
 
 // Create or update dictionary mapping
-func GenerateDictionaryMapping(path string, model IDictionaryMapping, db *DBO) error {
+func GenerateDictionaryMapping(path string, db *DBO) error {
 	filter := SqlFilter{}
 	filter.AddOrder("type", "ASC")
 	filter.AddOrder("created_at", "ASC")
 	filter.AddOrder("id", "ASC")
-	dictionaries, _, err := model.Search(db, filter)
+	dictionaries, _, err := (&DictionaryModel{}).SearchDictionary(db, filter)
 	if err != nil {
 		return err
 	}
@@ -62,10 +116,10 @@ func GenerateDictionaryMapping(path string, model IDictionaryMapping, db *DBO) e
 	packageName := paths[len(paths)-2]
 	tml := getDictionaryTemplate()
 	err = tml.Execute(f, struct {
-		Dictionaries []IDictionaryMapping
+		Dictionaries []DictionaryModel
 		Package      string
 	}{
-		Dictionaries: dictionaries,
+		Dictionaries: *dictionaries,
 		Package:      packageName,
 	})
 
