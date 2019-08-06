@@ -13,11 +13,6 @@ type sqlOrder struct {
 	Direction string
 }
 
-// SQL Expression
-type sqlExpression struct {
-	Expression string
-}
-
 // SQL Pagination limit offset
 type sqlPagination struct {
 	Limit  int
@@ -26,14 +21,15 @@ type sqlPagination struct {
 
 // Filter struct
 type SqlFilter struct {
-	expression []sqlExpression
+	where      condition
 	orders     []sqlOrder
 	group      []string
-	arguments  []interface{}
+	having     condition
 	pagination sqlPagination
 }
 
-//Add or filter
+// Add or filter
+// Deprecated: use where condition merge
 func (f *SqlFilter) AddOrFilters(filter ...*SqlFilter) *SqlFilter {
 	args := make([]interface{}, 0)
 	conditions := make([]string, 0, len(filter))
@@ -46,15 +42,19 @@ func (f *SqlFilter) AddOrFilters(filter ...*SqlFilter) *SqlFilter {
 	return f.AddExpression("("+strings.Join(conditions, " OR ")+")", args)
 }
 
+// Where conditions
+func (f *SqlFilter) Where() *condition  {
+	return &f.where
+}
+
+// Where conditions
+func (f *SqlFilter) Having() *condition  {
+	return &f.having
+}
+
 // Add filed to filter
 func (f *SqlFilter) AddFiledFilter(field string, condition string, value interface{}) *SqlFilter {
-	expression := field + " " + condition + " ?"
-	f.expression = append(f.expression, sqlExpression{
-		Expression: expression,
-	})
-	if value != nil {
-		f.arguments = append(f.arguments, value)
-	}
+	f.where.AddExpression(field + " " + condition + " ?", value)
 	return f
 }
 
@@ -64,10 +64,7 @@ func (f *SqlFilter) AddInFilter(field string, values []interface{}) *SqlFilter {
 	for i := range condition {
 		condition[i] = "?"
 	}
-	f.expression = append(f.expression, sqlExpression{
-		Expression: fmt.Sprintf("%s IN (%s)", field, strings.Join(condition, ",")),
-	})
-	f.arguments = append(f.arguments, values...)
+	f.where.AddExpression(fmt.Sprintf("%s IN (%s)", field, strings.Join(condition, ",")), values...)
 	return f
 }
 
@@ -77,21 +74,13 @@ func (f *SqlFilter) AddNotInFilter(field string, values []interface{}) *SqlFilte
 	for i := range condition {
 		condition[i] = "?"
 	}
-	f.expression = append(f.expression, sqlExpression{
-		Expression: fmt.Sprintf("%s NOT IN (%s)", field, strings.Join(condition, ",")),
-	})
-	f.arguments = append(f.arguments, values...)
+	f.where.AddExpression(fmt.Sprintf("%s NOT IN (%s)", field, strings.Join(condition, ",")), values...)
 	return f
 }
 
 // Add filter expression
 func (f *SqlFilter) AddExpression(expression string, values []interface{}) *SqlFilter {
-	f.expression = append(f.expression, sqlExpression{
-		Expression: expression,
-	})
-	if len(values) > 0 {
-		f.arguments = append(f.arguments, values...)
-	}
+	f.where.AddExpression(expression, values...)
 	return f
 }
 
@@ -127,26 +116,27 @@ func (f *SqlFilter) SetPagination(limit int, offset int) *SqlFilter {
 
 // Get arguments
 func (f *SqlFilter) GetArguments() []interface{} {
-	return f.arguments
+	return append(f.where.GetArguments(), f.having.GetArguments()...)
 }
 
 // Make SQL query
 func (f SqlFilter) String() string {
-	var expressionFilters []string
 	var orders []string
 	var result = make([]string, 0, 4)
 
-	// Prepare conditions
-	for _, value := range f.expression {
-		expressionFilters = append(expressionFilters, value.Expression)
-	}
-	if len(expressionFilters) > 0 {
-		result = append(result, strings.Join(expressionFilters, " AND "))
+	// where conditions
+	if len(f.where.expression) > 0 {
+		result = append(result, f.where.String())
 	}
 
 	// Prepare groups
 	if len(f.group) > 0 {
 		result = append(result, "GROUP BY "+strings.Join(f.group, ", "))
+	}
+
+	// having expression
+	if len(f.having.expression) > 0 {
+		result = append(result, "HAVING "+f.having.String())
 	}
 
 	// Prepare orders
@@ -167,7 +157,7 @@ func (f SqlFilter) String() string {
 
 // Get query with WHERE
 func (f SqlFilter) GetWithWhere() string {
-	if len(f.expression) > 0 {
+	if len(f.where.expression) > 0 {
 		return "WHERE " + f.String()
 	}
 
@@ -176,5 +166,5 @@ func (f SqlFilter) GetWithWhere() string {
 
 // New SQL Filter with pagination
 func NewSqlFilter() *SqlFilter {
-	return &SqlFilter{}
+	return &SqlFilter{where:condition{operator:ConditionOperatorAnd}}
 }

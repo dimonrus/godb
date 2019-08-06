@@ -16,13 +16,13 @@ func TestSqlFilter_AddOrder(t *testing.T) {
 	filter.GroupBy("entity")
 
 	fmt.Println(filter.GetWithWhere())
-	if filter.GetWithWhere() != "WHERE name IN (?,?) GROUP BY name, entity ORDER BY name desc" {
+	if filter.GetWithWhere() != "WHERE (name IN (?,?)) GROUP BY name, entity ORDER BY name desc" {
 		t.Fatal("wrong work")
 	}
 
 	filter.ResetGroupBy()
 	fmt.Println(filter.GetWithWhere())
-	if filter.GetWithWhere() != "WHERE name IN (?,?) ORDER BY name desc" {
+	if filter.GetWithWhere() != "WHERE (name IN (?,?)) ORDER BY name desc" {
 		t.Fatal("wrong work")
 	}
 }
@@ -35,9 +35,11 @@ func TestSqlFilter_AddOrFilters(t *testing.T) {
 
 	filter.AddOrFilters(
 		NewSqlFilter().AddFiledFilter("one", "=", 1),
-		NewSqlFilter().AddFiledFilter("one", "=", 1),
+		NewSqlFilter().AddFiledFilter("one", "=", 5),
 	)
 	filter.AddFiledFilter("two", "!=", 10)
+
+	fmt.Println(filter.GetArguments())
 
 	//filter.AddOrder("one", "DESC")
 	//filter.AddOrder("two", "ASC")
@@ -45,7 +47,24 @@ func TestSqlFilter_AddOrFilters(t *testing.T) {
 	//filter.GroupBy("one, two")
 	//filter.SetPagination(10, 20)
 	fmt.Println(filter.GetWithWhere())
-	if filter.GetWithWhere() != "WHERE (one = ? OR one = ?) AND two != ?" {
+	if filter.GetWithWhere() != "WHERE (((one = ?) OR (one = ?)) AND two != ?)" {
 		t.Fatal("wrong work")
 	}
+}
+
+func TestSqlFilter_Having(t *testing.T) {
+	filter := NewSqlFilter()
+	filter.AddOrFilters(
+		NewSqlFilter().AddFiledFilter("one", "=", 1),
+		NewSqlFilter().AddFiledFilter("one", "=", 5),
+	)
+	filter.AddFiledFilter("two", "!=", 10)
+	filter.Having().AddExpression("three = ?", 3)
+	filter.AddOrder("created_at", "DESC")
+	filter.GroupBy("one")
+	filter.SetPagination(10, 20)
+
+	fmt.Println(filter.GetWithWhere())
+	fmt.Println(filter.GetArguments())
+
 }
