@@ -156,6 +156,8 @@ ORDER BY a.attnum;`, schema, table)
 			column.ModelType = "[]string"
 		case column.DataType == "integer[]":
 			column.ModelType = "[]int"
+		case column.DataType == "bigint[]":
+			column.ModelType = "[]int64"
 		case column.DataType == "text[]":
 			column.ModelType = "[]string"
 		case strings.Contains(column.DataType, "timestamp"):
