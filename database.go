@@ -174,7 +174,7 @@ func (st *SqlStmt) QueryRow(args ...interface{}) *sql.Row {
 func preparePositionalArgsQuery(query string) string {
 	parts := strings.Split(query, "?")
 	length := len(parts) - 1
-	for index, _ := range parts {
+	for index := range parts {
 		if index < length {
 			parts[index] += "$" + strconv.Itoa(index+1)
 		}

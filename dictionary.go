@@ -64,7 +64,7 @@ func (m *DictionaryModel) SearchDictionary(q Queryer, filter SqlFilter) (*[]Dict
 }
 
 // Create Table
-func CreateDictionaryTable(db *DBO) error {
+func CreateDictionaryTable(q Queryer) error {
 	query := `
 CREATE TABLE IF NOT EXISTS dictionary
 (
@@ -87,7 +87,7 @@ COMMENT ON COLUMN dictionary.deleted_at IS 'Время удваления зап
 
 CREATE INDEX IF NOT EXISTS dictionary_type_idx ON dictionary (type);`
 
-	_, err := db.Exec(query)
+	_, err := q.Exec(query)
 	if err != nil {
 		return err
 	}
@@ -96,12 +96,12 @@ CREATE INDEX IF NOT EXISTS dictionary_type_idx ON dictionary (type);`
 }
 
 // Create or update dictionary mapping
-func GenerateDictionaryMapping(path string, db *DBO) error {
+func GenerateDictionaryMapping(path string, q Queryer) error {
 	filter := SqlFilter{}
 	filter.AddOrder("type", "ASC")
 	filter.AddOrder("created_at", "ASC")
 	filter.AddOrder("id", "ASC")
-	dictionaries, _, err := (&DictionaryModel{}).SearchDictionary(db, filter)
+	dictionaries, _, err := (&DictionaryModel{}).SearchDictionary(q, filter)
 	if err != nil {
 		return err
 	}
