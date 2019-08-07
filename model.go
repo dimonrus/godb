@@ -154,6 +154,8 @@ ORDER BY a.attnum;`, schema, table)
 			column.ModelType = "struct{}"
 		case column.DataType == "uuid[]":
 			column.ModelType = "[]string"
+		case column.DataType == "integer[]":
+			column.ModelType = "[]int"
 		case column.DataType == "text[]":
 			column.ModelType = "[]string"
 		case strings.Contains(column.DataType, "timestamp"):
