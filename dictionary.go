@@ -152,10 +152,10 @@ package {{ .Package }}
 
 const ({{$dType := ""}}
 	{{ range $item := .Dictionaries }}{{if ne $dType $item.Type}}{{$dType = $item.Type}}
-{{ end }}{{ $item.Type | camelCase }}{{ $item.Code | camelCase }} = {{ $item.Id }}
+{{ end }}{{ $item.Type | camelCase }}{{ $item.Code | camelCase }} = {{ $item.Id }} {{ if $item.Label }} // {{ $item.Label }} {{ end }}
 {{ end }}
 	{{ range $item := .Dictionaries }}{{if ne $dType $item.Type}}{{$dType = $item.Type}}
-{{ end }}{{ $item.Type | camelCase }}{{ $item.Code | camelCase }}Code = "{{ $item.Code }}"
+{{ end }}{{ $item.Type | camelCase }}{{ $item.Code | camelCase }}Code = "{{ $item.Code }}" {{ if $item.Label }} // {{ $item.Label }} {{ end }}
 {{ end }}
 )
 

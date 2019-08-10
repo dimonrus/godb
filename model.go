@@ -445,7 +445,7 @@ func (m *{{ .Model }}) GetSaveQuery() string {
 // Get model searcher
 func getModelSearcher(model string, table string, columns Columns) (bytes.Buffer, error) {
 	t := `// Search by filer
-func Search{{ .Model }}(q godb.Queryer, filter godb.SqlFilter) (*[]{{ .Model }}, {{ $index := 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }}, {{ end }}{{ $index = inc $index }}[]{{ $column.ModelType }}{{ end }}{{ end }}, error) {
+func Search{{ .Model }}(q godb.Queryer, filter *godb.SqlFilter) (*[]{{ .Model }}, {{ $index := 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }}, {{ end }}{{ $index = inc $index }}[]{{ $column.ModelType }}{{ end }}{{ end }}, error) {
 	query := fmt.Sprintf("SELECT " + strings.Join((&{{ .Model }}{}).Columns(), ",") + " FROM {{ .Table }} %s", filter.GetWithWhere())
 	rows, err := q.Query(query, filter.GetArguments()...)
 	{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}
