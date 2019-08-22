@@ -68,3 +68,14 @@ func TestSqlFilter_Having(t *testing.T) {
 	fmt.Println(filter.GetArguments())
 
 }
+
+func TestSqlFilter_Where(t *testing.T) {
+	filter := NewSqlFilter()
+	filter.AddFiledFilter("two", "!=", 10)
+	filter.AddFiledFilter("three", "==", 3)
+
+	filter.Where().Merge(ConditionOperatorOr, NewSqlCondition(ConditionOperatorAnd).AddExpression("one = ?", 1))
+	if filter.GetWithWhere() != "WHERE ((one = ?) OR (two != ? AND three == ?))" {
+		t.Fatal("Wrong filter works")
+	}
+}

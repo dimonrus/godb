@@ -32,6 +32,7 @@ type Column struct {
 	IsPrimaryKey      bool    // DB is primary key
 	Json              string  // Model Json name
 	Import            string  // Model Import custom lib
+	IsArray           bool    // Array column
 }
 
 // Array of columns
@@ -140,7 +141,7 @@ ORDER BY a.attnum;`, schema, table)
 			column.ModelType = "json.RawMessage"
 			column.Import = `"encoding/json"`
 		case column.DataType == "smallint":
-			column.ModelType = "int"
+			column.ModelType = "int16"
 		case column.DataType == "date":
 			column.ModelType = "time.Time"
 			column.Import = `"time"`
@@ -151,15 +152,24 @@ ORDER BY a.attnum;`, schema, table)
 		case column.DataType == "uuid":
 			column.ModelType = "string"
 		case column.DataType == "jsonb":
-			column.ModelType = "struct{}"
+			column.ModelType = "json.RawMessage"
+			column.Import = `"encoding/json"`
 		case column.DataType == "uuid[]":
 			column.ModelType = "[]string"
+			column.IsArray = true
+			column.Import = "github.com/lib/pq"
 		case column.DataType == "integer[]":
 			column.ModelType = "[]int"
+			column.IsArray = true
+			column.Import = "github.com/lib/pq"
 		case column.DataType == "bigint[]":
 			column.ModelType = "[]int64"
+			column.IsArray = true
+			column.Import = "github.com/lib/pq"
 		case column.DataType == "text[]":
 			column.ModelType = "[]string"
+			column.IsArray = true
+			column.Import = "github.com/lib/pq"
 		case strings.Contains(column.DataType, "timestamp"):
 			column.ModelType = "time.Time"
 			column.Import = `"time"`
@@ -167,7 +177,7 @@ ORDER BY a.attnum;`, schema, table)
 			return nil, errors.New(fmt.Sprintf("unknown column type: %s", column.DataType))
 		}
 
-		if column.IsNullable {
+		if column.IsNullable && !column.IsArray {
 			column.ModelType = "*" + column.ModelType
 		}
 
@@ -282,7 +292,7 @@ func (m *{{ .Model }}) Columns() []string {
 func getValues(model string, table string, columns Columns) (bytes.Buffer, error) {
 	t := `// Model values
 func (m *{{ .Model }}) Values() (values []interface{}) {
-	return append(values, {{ range $key, $column := .Columns }}{{ if $key }}, {{ end }}&m.{{ $column.ModelName }}{{ end }})
+	return append(values, {{ range $key, $column := .Columns }}{{ if $key }}, {{ end }}{{ if $column.IsArray }}pq.Array({{ end }}&m.{{ $column.ModelName }}{{ if $column.IsArray  }}){{ end }}{{ end }})
 }
 `
 	return ParseCrudMethodTemplate(t, model, table, columns)
@@ -373,6 +383,21 @@ func (m *{{ .Model }}) GetDeleteQuery() string {
 func (m *{{ .Model }}) Delete(q godb.Queryer) error {
 	_, err := q.Exec(m.GetDeleteQuery(), {{ $index := 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }}, {{ end }}{{ $index = inc $index }}m.{{ $column.ModelName }}{{ end }}{{ end }})
 	return err
+}
+`
+	return ParseCrudMethodTemplate(t, model, table, columns)
+}
+
+// Check if model exists
+func getModelExister(model string, table string, columns Columns) (bytes.Buffer, error) {
+	t := `// SQL exists Query
+func (m *{{ .Model }}) GetExistsQuery() string {
+	return "SELECT EXISTS (SELECT 1 FROM {{ .Table }}) WHERE {{ $index := 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }} AND {{ end }}{{ $index = inc $index }}{{ $column.Name }} = ${{$index}}{{ end }}{{ end }};"
+}
+// Exists method
+func (m *{{ .Model }}) IsExists(q godb.Queryer) (exists bool, err error) {
+	err = q.QueryRow(m.GetExistsQuery(), {{ $index := 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }}, {{ end }}{{ $index = inc $index }}m.{{ $column.ModelName }}{{ end }}{{ end }}).Scan(&exists)
+	return
 }
 `
 	return ParseCrudMethodTemplate(t, model, table, columns)
@@ -554,6 +579,11 @@ func CreateModel(schema string, table string, path string) error {
 		return err
 	}
 
+	existster, err := getModelExister(modelName, tableName, *columns)
+	if err != nil {
+		return err
+	}
+
 	saver, err := getModelSaver(modelName, tableName, *columns)
 	if err != nil {
 		return err
@@ -600,6 +630,11 @@ func CreateModel(schema string, table string, path string) error {
 	}
 
 	_, err = file.Write(deleter.Bytes())
+	if err != nil {
+		return err
+	}
+
+	_, err = file.Write(existster.Bytes())
 	if err != nil {
 		return err
 	}
