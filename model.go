@@ -157,19 +157,19 @@ ORDER BY a.attnum;`, schema, table)
 		case column.DataType == "uuid[]":
 			column.ModelType = "[]string"
 			column.IsArray = true
-			column.Import = "github.com/lib/pq"
+			column.Import = `"github.com/lib/pq"`
 		case column.DataType == "integer[]":
 			column.ModelType = "[]int"
 			column.IsArray = true
-			column.Import = "github.com/lib/pq"
+			column.Import = `"github.com/lib/pq"`
 		case column.DataType == "bigint[]":
 			column.ModelType = "[]int64"
 			column.IsArray = true
-			column.Import = "github.com/lib/pq"
+			column.Import = `"github.com/lib/pq"`
 		case column.DataType == "text[]":
 			column.ModelType = "[]string"
 			column.IsArray = true
-			column.Import = "github.com/lib/pq"
+			column.Import = `"github.com/lib/pq"`
 		case strings.Contains(column.DataType, "timestamp"):
 			column.ModelType = "time.Time"
 			column.Import = `"time"`
