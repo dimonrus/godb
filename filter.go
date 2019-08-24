@@ -53,12 +53,14 @@ func (f *SqlFilter) Having() *condition  {
 }
 
 // Add filed to filter
+// Deprecated: use where condition merge
 func (f *SqlFilter) AddFiledFilter(field string, condition string, value interface{}) *SqlFilter {
 	f.where.AddExpression(field + " " + condition + " ?", value)
 	return f
 }
 
 // Add in Filter
+// Deprecated: use where condition merge
 func (f *SqlFilter) AddInFilter(field string, values []interface{}) *SqlFilter {
 	condition := make([]string, len(values))
 	for i := range condition {
@@ -69,6 +71,7 @@ func (f *SqlFilter) AddInFilter(field string, values []interface{}) *SqlFilter {
 }
 
 // Add not in filter
+// Deprecated: use where condition merge
 func (f *SqlFilter) AddNotInFilter(field string, values []interface{}) *SqlFilter {
 	condition := make([]string, len(values))
 	for i := range condition {
@@ -79,6 +82,7 @@ func (f *SqlFilter) AddNotInFilter(field string, values []interface{}) *SqlFilte
 }
 
 // Add filter expression
+// Deprecated: use where or having condition merge
 func (f *SqlFilter) AddExpression(expression string, values []interface{}) *SqlFilter {
 	f.where.AddExpression(expression, values...)
 	return f
