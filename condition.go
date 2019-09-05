@@ -34,10 +34,15 @@ func (c *condition) String() string {
 		for i := range (*c.merge).condition {
 			slaves = append(slaves, (*c.merge).condition[i].String())
 		}
-		slaves = append(slaves, "(" + strings.Join(c.expression, " "+c.operator+" ") + ")")
+		if c.expression != nil {
+			slaves = append(slaves, "(" + strings.Join(c.expression, " "+c.operator+" ") + ")")
+		}
 		return "(" + strings.Join(slaves, " "+c.merge.operator+" ") + ")"
 	} else {
-		return "(" + strings.Join(c.expression, " "+c.operator+" ") + ")"
+		if c.expression != nil {
+			return "(" + strings.Join(c.expression, " "+c.operator+" ") + ")"
+		}
+		return ""
 	}
 }
 
