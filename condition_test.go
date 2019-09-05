@@ -29,7 +29,10 @@ func TestConditions_AddExpression(t *testing.T) {
 	c2.AddExpression("price = ?", 200.23)
 
 
-	c.Merge(ConditionOperatorOr, c1.Merge(ConditionOperatorAnd, c11), c2)
+	//c.Merge(ConditionOperatorOr, c1.Merge(ConditionOperatorAnd, c11), c2)
+
+	c.Merge(ConditionOperatorOr, c1)
+	c.Merge(ConditionOperatorOr, c2)
 
 	fmt.Println(c.String())
 	fmt.Println(c.GetArguments())

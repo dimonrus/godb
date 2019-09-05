@@ -63,7 +63,11 @@ func (c *condition) AddExpression(expression string, values ...interface{}) *con
 // Merge with conditions
 func (c *condition) Merge(operator string, conditions ...*condition) *condition {
 	if len(conditions) > 0 {
-		c.merge = &merge{operator: operator, condition: conditions}
+		if c.merge == nil {
+			c.merge = &merge{operator: operator, condition: conditions}
+		} else {
+			c.merge.condition = append(c.merge.condition, conditions...)
+		}
 	}
 	return c
 }
