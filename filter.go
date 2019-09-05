@@ -129,7 +129,7 @@ func (f SqlFilter) String() string {
 	var result = make([]string, 0, 4)
 
 	// where conditions
-	if len(f.where.expression) > 0 {
+	if len(f.where.expression) > 0 || f.where.merge.condition != nil {
 		result = append(result, f.where.String())
 	}
 
@@ -139,7 +139,7 @@ func (f SqlFilter) String() string {
 	}
 
 	// having expression
-	if len(f.having.expression) > 0 {
+	if len(f.having.expression) > 0 || f.having.merge.condition != nil {
 		result = append(result, "HAVING "+f.having.String())
 	}
 
@@ -161,7 +161,7 @@ func (f SqlFilter) String() string {
 
 // Get query with WHERE
 func (f SqlFilter) GetWithWhere() string {
-	if len(f.where.expression) > 0 {
+	if len(f.where.expression) > 0 || f.where.merge.condition != nil {
 		return "WHERE " + f.String()
 	}
 
