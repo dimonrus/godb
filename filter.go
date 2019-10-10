@@ -21,15 +21,15 @@ type sqlPagination struct {
 
 // Filter struct
 type SqlFilter struct {
-	where      condition
+	where      Condition
 	orders     []sqlOrder
 	group      []string
-	having     condition
+	having     Condition
 	pagination sqlPagination
 }
 
 // Add or filter
-// Deprecated: use where condition merge
+// Deprecated: use where Condition merge
 func (f *SqlFilter) AddOrFilters(filter ...*SqlFilter) *SqlFilter {
 	args := make([]interface{}, 0)
 	conditions := make([]string, 0, len(filter))
@@ -43,24 +43,24 @@ func (f *SqlFilter) AddOrFilters(filter ...*SqlFilter) *SqlFilter {
 }
 
 // Where conditions
-func (f *SqlFilter) Where() *condition  {
+func (f *SqlFilter) Where() *Condition {
 	return &f.where
 }
 
 // Where conditions
-func (f *SqlFilter) Having() *condition  {
+func (f *SqlFilter) Having() *Condition {
 	return &f.having
 }
 
 // Add filed to filter
-// Deprecated: use where condition merge
+// Deprecated: use where Condition merge
 func (f *SqlFilter) AddFiledFilter(field string, condition string, value interface{}) *SqlFilter {
 	f.where.AddExpression(field + " " + condition + " ?", value)
 	return f
 }
 
 // Add in Filter
-// Deprecated: use where condition merge
+// Deprecated: use where Condition merge
 func (f *SqlFilter) AddInFilter(field string, values []interface{}) *SqlFilter {
 	condition := make([]string, len(values))
 	for i := range condition {
@@ -71,7 +71,7 @@ func (f *SqlFilter) AddInFilter(field string, values []interface{}) *SqlFilter {
 }
 
 // Add not in filter
-// Deprecated: use where condition merge
+// Deprecated: use where Condition merge
 func (f *SqlFilter) AddNotInFilter(field string, values []interface{}) *SqlFilter {
 	condition := make([]string, len(values))
 	for i := range condition {
@@ -82,7 +82,7 @@ func (f *SqlFilter) AddNotInFilter(field string, values []interface{}) *SqlFilte
 }
 
 // Add filter expression
-// Deprecated: use where or having condition merge
+// Deprecated: use where or having Condition merge
 func (f *SqlFilter) AddExpression(expression string, values []interface{}) *SqlFilter {
 	f.where.AddExpression(expression, values...)
 	return f
@@ -170,5 +170,5 @@ func (f SqlFilter) GetWithWhere() string {
 
 // New SQL Filter with pagination
 func NewSqlFilter() *SqlFilter {
-	return &SqlFilter{where:condition{operator:ConditionOperatorAnd}}
+	return &SqlFilter{where: Condition{operator: ConditionOperatorAnd}}
 }

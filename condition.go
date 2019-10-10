@@ -8,27 +8,27 @@ const (
 	ConditionOperatorXor = "XOR"
 )
 
-// Merge with condition
+// Merge with Condition
 type merge struct {
 	operator  string
-	condition []*condition
+	condition []*Condition
 }
 
 // Condition type
-type condition struct {
+type Condition struct {
 	operator   string
 	expression []string
 	argument   []interface{}
 	merge      *merge
 }
 
-// Init condition
-func NewSqlCondition(operator string) *condition {
-	return &condition{operator: operator}
+// Init Condition
+func NewSqlCondition(operator string) *Condition {
+	return &Condition{operator: operator}
 }
 
 // Get string of conditions
-func (c *condition) String() string {
+func (c *Condition) String() string {
 	if c.merge != nil {
 		var slaves []string
 		for i := range (*c.merge).condition {
@@ -47,7 +47,7 @@ func (c *condition) String() string {
 }
 
 // Get arguments
-func (c *condition) GetArguments() []interface{} {
+func (c *Condition) GetArguments() []interface{} {
 	var arguments = make([]interface{}, 0)
 	if c.merge != nil {
 		for i := range (*c.merge).condition {
@@ -59,14 +59,14 @@ func (c *condition) GetArguments() []interface{} {
 }
 
 // Add expression
-func (c *condition) AddExpression(expression string, values ...interface{}) *condition {
+func (c *Condition) AddExpression(expression string, values ...interface{}) *Condition {
 	c.expression = append(c.expression, expression)
 	c.argument = append(c.argument, values...)
 	return c
 }
 
 // Merge with conditions
-func (c *condition) Merge(operator string, conditions ...*condition) *condition {
+func (c *Condition) Merge(operator string, conditions ...*Condition) *Condition {
 	if len(conditions) > 0 {
 		if c.merge == nil {
 			c.merge = &merge{operator: operator, condition: conditions}
