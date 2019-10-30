@@ -33,6 +33,7 @@ func TestConditions_AddExpression(t *testing.T) {
 
 	c.Merge(ConditionOperatorOr, c1)
 	c.Merge(ConditionOperatorOr, c2)
+	c.Merge(ConditionOperatorOr, nil)
 
 	fmt.Println(c.String())
 	fmt.Println(c.GetArguments())
