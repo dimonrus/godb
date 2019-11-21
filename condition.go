@@ -65,6 +65,12 @@ func (c *Condition) AddExpression(expression string, values ...interface{}) *Con
 	return c
 }
 
+// Add argument
+func (c *Condition) AddArgument(values ...interface{}) *Condition {
+	c.argument = append(c.argument, values...)
+	return c
+}
+
 // Merge with conditions
 func (c *Condition) Merge(operator string, conditions ...*Condition) *Condition {
 	if len(conditions) > 0 {
