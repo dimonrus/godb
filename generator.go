@@ -170,7 +170,7 @@ ORDER BY a.attnum;`, schema, table)
 			column.IsArray = true
 			column.Import = `"github.com/lib/pq"`
 		case column.DataType == "integer[]":
-			column.ModelType = "[]int"
+			column.ModelType = "[]int64"
 			column.IsArray = true
 			column.Import = `"github.com/lib/pq"`
 		case column.DataType == "bigint[]":
