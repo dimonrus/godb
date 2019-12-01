@@ -270,7 +270,7 @@ func MakeModel(db Queryer, path string, schema string, table string) error  {
 	// New Template
 	tmpl := template.New("model").Funcs(getHelperFunc())
 
-	templateFile, err := os.Open("gen/model.tmpl")
+	templateFile, err := os.Open("model.tmpl")
 	if err != nil {
 		return err
 	}
