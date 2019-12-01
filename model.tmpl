@@ -5,6 +5,17 @@ import (
 {{ end }}
 )
 
+// Collection of {{ .Model }}
+type {{ .Model }}Collection []*{{ .Model }}
+
+// Get first item of {{ .Model }} Collection
+func (c {{ .Model }}Collection) First() *{{ .Model }} {
+    if len(c) > 0 {
+        return c[0]
+    }
+    return nil
+}
+
 // {{ .Model }} model
 type {{ .Model }} struct { {{ range $key, $column := .Columns }}
     {{ $column.ModelName }} {{ $column.ModelType }} {{ $column.Json }} {{ if $column.Description }}// {{ $column.Description }}{{ end }}{{ end }}
@@ -138,7 +149,7 @@ func (m *{{ .Model }}) IsExists(q godb.Queryer) (exists bool, e porterr.IError) 
 {{ end }}
 
 // Search by filter
-func Search{{ .Model }}(q godb.Queryer, filter *godb.SqlFilter) ([]*{{ .Model }}, {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }}, {{ end }}{{ $index = inc $index }}[]{{ $column.ModelType }}{{ end }}{{ end }}, porterr.IError) {
+func Search{{ .Model }}(q godb.Queryer, filter *godb.SqlFilter) ({{ .Model }}Collection, {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }}, {{ end }}{{ $index = inc $index }}[]{{ $column.ModelType }}{{ end }}{{ end }}, porterr.IError) {
     query := fmt.Sprintf("SELECT " + strings.Join((&{{ .Model }}{}).Columns(), ",") + " FROM {{ .Table }} %s", filter.GetWithWhere())
     rows, err := q.Query(query, filter.GetArguments()...)
     {{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}
@@ -147,7 +158,7 @@ func Search{{ .Model }}(q godb.Queryer, filter *godb.SqlFilter) ([]*{{ .Model }}
         return nil, {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }}, {{ end }}{{ $index = inc $index }}entity{{ $column.ModelName }}s{{ end }}{{ end }}, porterr.New(porterr.PortErrorDatabaseQuery, "Search {{ .Model }} query error: "+err.Error())
     }
     defer rows.Close()
-    var result []*{{ .Model }}
+    var result {{ .Model }}Collection
     for rows.Next() {
         model := &{{ .Model }}{}
         err = rows.Scan(model.Values()...)
