@@ -256,9 +256,16 @@ func CreateModelFile(schema string, table string, path string) (*os.File, string
 }
 
 // Create model
-func MakeModel(db Queryer, path string, schema string, table string) error  {
+func MakeModel(db Queryer, path string, schema string, table string, templatePath string) error  {
 	// Imports in model file
-	var imports = []string{`"strings"`, `"database/sql"`, `"errors"`, `"fmt"`, `"github.com/dimonrus/godb"`}
+	var imports = []string{
+		`"strings"`,
+		`"database/sql"`,
+		`"fmt"`,
+		`"net/http"`,
+		`"github.com/dimonrus/godb"`,
+		`"github.com/dimonrus/porterr"`,
+	}
 
 	// Name of model
 	var name = table
@@ -270,7 +277,7 @@ func MakeModel(db Queryer, path string, schema string, table string) error  {
 	// New Template
 	tmpl := template.New("model").Funcs(getHelperFunc())
 
-	templateFile, err := os.Open("model.tmpl")
+	templateFile, err := os.Open(templatePath)
 	if err != nil {
 		return err
 	}
@@ -296,6 +303,9 @@ func MakeModel(db Queryer, path string, schema string, table string) error  {
 		if c.ForeignTable != nil {
 			var found bool
 			err := filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
+				if info == nil {
+					return nil
+				}
 				if info.IsDir() {
 					return nil
 				}
@@ -321,7 +331,7 @@ func MakeModel(db Queryer, path string, schema string, table string) error  {
 				return err
 			}
 			if !found {
-				err = MakeModel(db, path, schema, *c.ForeignTable)
+				err = MakeModel(db, path, schema, *c.ForeignTable, templatePath)
 				if err != nil {
 					return err
 				}

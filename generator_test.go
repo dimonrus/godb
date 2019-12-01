@@ -9,7 +9,7 @@ func TestMakeModel2(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = MakeModel(db, "models", "public", "bench")
+	err = MakeModel(db, "models", "public", "bench", "model.tmpl")
 	if err != nil {
 		t.Fatal(err)
 	}
