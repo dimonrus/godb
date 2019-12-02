@@ -43,7 +43,7 @@ type Column struct {
 	IsArray           bool    // Array column
 	IsCreated         bool    // Is created at column
 	IsUpdated         bool    // Is updated at column
-	IsIsDeleted       bool    // Is deleted at column
+	IsDeleted         bool    // Is deleted at column
 
 }
 
@@ -155,7 +155,7 @@ ORDER BY a.attnum;`, schema, table)
 			column.IsUpdated = true
 		}
 		if column.Name == sysCols.Deleted {
-			column.IsIsDeleted = true
+			column.IsDeleted = true
 		}
 
 		switch {
