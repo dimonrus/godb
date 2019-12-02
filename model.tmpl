@@ -66,7 +66,7 @@ func (m *{{ .Model }}) Load(q godb.Queryer) (*{{ .Model }}, porterr.IError) {
 
     // Soft Delete {{ $.Model }}
     func (m *{{ $.Model }}) SoftDelete(q godb.Queryer) porterr.IError {
-        _, err := q.QueryRow(m.GetSoftDeleteQuery(), {{ $index = 0 }}{{ range $key, $col := $.Columns  }}{{ if $col.IsPrimaryKey }}{{ if $index }}, {{ end }}{{ $index = inc $index }}m.{{ $col.ModelName }}{{ end }}{{ end }}).Scan(&m.{{ $column.ModelName }})
+        err := q.QueryRow(m.GetSoftDeleteQuery(), {{ $index = 0 }}{{ range $key, $col := $.Columns  }}{{ if $col.IsPrimaryKey }}{{ if $index }}, {{ end }}{{ $index = inc $index }}m.{{ $col.ModelName }}{{ end }}{{ end }}).Scan(&m.{{ $column.ModelName }})
         if err != nil {
             return porterr.New(porterr.PortErrorDatabaseQuery, "Soft delete {{ $.Model }} error: "+err.Error())
         }
