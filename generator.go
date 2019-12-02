@@ -13,6 +13,15 @@ import (
 	"text/template"
 )
 
+var DefaultSystemColumnsSoft = SystemColumns{Created: "created_at", Updated: "updated_at", Deleted: "deleted_at"}
+var DefaultSystemColumns = SystemColumns{Created: "created_at", Updated: "updated_at"}
+
+type SystemColumns struct {
+	Created string
+	Updated string
+	Deleted string
+}
+
 // Column information
 type Column struct {
 	Name              string  // DB column name
@@ -32,6 +41,10 @@ type Column struct {
 	Json              string  // Model Json name
 	Import            string  // Model Import custom lib
 	IsArray           bool    // Array column
+	IsCreated         bool    // Is created at column
+	IsUpdated         bool    // Is updated at column
+	IsIsDeleted       bool    // Is deleted at column
+
 }
 
 // Array of columns
@@ -75,7 +88,7 @@ func parseColumnRow(rows *sql.Rows) (*Column, error) {
 }
 
 // Get table columns from db
-func GetTableColumns(dbo Queryer, schema string, table string) (*Columns, error) {
+func GetTableColumns(dbo Queryer, schema string, table string, sysCols SystemColumns) (*Columns, error) {
 	query := fmt.Sprintf(`
 SELECT a.attname                                                                       AS column_name,
        format_type(a.atttypid, a.atttypmod)                                            AS data_type,
@@ -134,6 +147,16 @@ ORDER BY a.attnum;`, schema, table)
 
 		column.ModelName = name
 		column.Json = fmt.Sprintf(`%cjson:"%s"%c`, '`', json, '`')
+
+		if column.Name == sysCols.Created {
+			column.IsCreated = true
+		}
+		if column.Name == sysCols.Updated {
+			column.IsUpdated = true
+		}
+		if column.Name == sysCols.Deleted {
+			column.IsIsDeleted = true
+		}
 
 		switch {
 		case column.DataType == "bigint":
@@ -213,13 +236,13 @@ ORDER BY a.attnum;`, schema, table)
 }
 
 // Template helper functions
-func getHelperFunc() template.FuncMap {
+func getHelperFunc(systemColumns SystemColumns) template.FuncMap {
 	return template.FuncMap{
 		"inc": func(i int) int {
 			return i + 1
 		},
 		"system": func(column Column) bool {
-			return gohelp.ExistsInArrayString(column.Name, []string{"updated_at", "created_at", "deleted_at"}) ||
+			return gohelp.ExistsInArrayString(column.Name, []string{systemColumns.Created, systemColumns.Updated, systemColumns.Deleted}) ||
 				(column.IsPrimaryKey && column.Sequence != nil)
 		},
 		"cameled": func(name string) string {
@@ -256,7 +279,7 @@ func CreateModelFile(schema string, table string, path string) (*os.File, string
 }
 
 // Create model
-func MakeModel(db Queryer, path string, schema string, table string, templatePath string) error  {
+func MakeModel(db Queryer, path string, schema string, table string, templatePath string, systemColumns SystemColumns) error {
 	// Imports in model file
 	var imports = []string{
 		`"strings"`,
@@ -275,7 +298,7 @@ func MakeModel(db Queryer, path string, schema string, table string, templatePat
 	}
 
 	// New Template
-	tmpl := template.New("model").Funcs(getHelperFunc())
+	tmpl := template.New("model").Funcs(getHelperFunc(systemColumns))
 
 	templateFile, err := os.Open(templatePath)
 	if err != nil {
@@ -292,7 +315,7 @@ func MakeModel(db Queryer, path string, schema string, table string, templatePat
 	tmpl = template.Must(tmpl.Parse(string(data)))
 
 	// Columns
-	columns, err := GetTableColumns(db, schema, table)
+	columns, err := GetTableColumns(db, schema, table, systemColumns)
 	if err != nil {
 		return err
 	}
@@ -319,7 +342,7 @@ func MakeModel(db Queryer, path string, schema string, table string, templatePat
 					return err
 				}
 				cammeled, err := gohelp.ToCamelCase(*c.ForeignTable, true)
-				if err != nil  {
+				if err != nil {
 					return err
 				}
 				if strings.Contains(string(data), fmt.Sprintf("type %s struct {", cammeled)) {
@@ -331,7 +354,7 @@ func MakeModel(db Queryer, path string, schema string, table string, templatePat
 				return err
 			}
 			if !found {
-				err = MakeModel(db, path, schema, *c.ForeignTable, templatePath)
+				err = MakeModel(db, path, schema, *c.ForeignTable, templatePath, systemColumns)
 				if err != nil {
 					return err
 				}
@@ -389,7 +412,7 @@ func MakeModel(db Queryer, path string, schema string, table string, templatePat
 		return err
 	}
 
-	err =  file.Close()
+	err = file.Close()
 	if err != nil {
 		return err
 	}

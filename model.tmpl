@@ -58,6 +58,22 @@ func (m *{{ .Model }}) Load(q godb.Queryer) (*{{ .Model }}, porterr.IError) {
     }
 {{ end }}{{ end }}
 
+{{ range $key, $column := .Columns }}{{ if $column.IsDeleted }}
+    // SQL Soft delete Query
+    func (m *{{ .Model }}) GetSoftDeleteQuery() string {
+        return "UPDATE {{ .Table }} SET {{ $column.Name }} = NOW() WHERE {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }} AND {{ end }}{{ $index = inc $index }}{{ $column.Name }} = ${{$index}}{{ end }}{{ end }} RETURNING {{ $column.Name }};"
+    }
+
+    // Soft Delete {{ $.Model }}
+    func (m *{{ $.Model }}) SoftDelete(q godb.Queryer) porterr.IError {
+        _, err := q.QueryRow(m.GetSoftDeleteQuery(), {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }}, {{ end }}{{ $index = inc $index }}m.{{ $column.ModelName }}{{ end }}{{ end }}).Scan(&m.{{ $column.ModelName }})
+        if err != nil {
+            return porterr.New(porterr.PortErrorDatabaseQuery, "Soft delete {{ .Model }} error: "+err.Error())
+        }
+        return nil
+    }
+{{ end }}{{ end }}
+
 // SQL delete Query
 func (m *{{ .Model }}) GetDeleteQuery() string {
     return "DELETE FROM {{ .Table }} WHERE {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }} AND {{ end }}{{ $index = inc $index }}{{ $column.Name }} = ${{$index}}{{ end }}{{ end }};"
