@@ -39,23 +39,12 @@ func (m *{{ .Model }}) GetLoadQuery() string {
 // Load method
 func (m *{{ .Model }}) Load(q godb.Queryer) (*{{ .Model }}, porterr.IError) {
     if {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }} && {{ end }}{{ $index = inc $index }} m.{{ $column.ModelName }} != {{ if eq $column.ModelType "string" }}""{{ else }}0{{ end }}{{ end }}{{ end }} {
-        iterator, err := q.Query(m.GetLoadQuery(), {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }}, {{ end }}{{ $index = inc $index }}m.{{ $column.ModelName }}{{ end }}{{ end }})
+        err := q.QueryRow(m.GetLoadQuery(), {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }}, {{ end }}{{ $index = inc $index }}m.{{ $column.ModelName }}{{ end }}{{ end }}).Scan(m.Values()...)
         if err != nil {
             if err == sql.ErrNoRows {
                 return nil, porterr.New(porterr.PortErrorSearch, "No {{ .Model }} found").HTTP(http.StatusNotFound)
             }
             return nil, porterr.New(porterr.PortErrorDatabaseQuery, "Load {{ .Model }} query error: "+err.Error())
-        }
-        if iterator == nil {
-            return nil, porterr.New(porterr.PortErrorSearch, "No {{ .Model }} found. Iterator is nil").HTTP(http.StatusNotFound)
-        }
-        defer iterator.Close()
-        if iterator.Next() == false {
-            return nil, nil
-        }
-        err = iterator.Scan(m.Values()...)
-        if err != nil {
-            return nil, porterr.New(porterr.PortErrorIO, "Scan {{ .Model }} error: "+err.Error())
         }
         return m, nil
     }
