@@ -59,6 +59,18 @@ func (m *{{ .Model }}) Load(q godb.Queryer) (*{{ .Model }}, porterr.IError) {
 {{ end }}{{ end }}
 
 {{ range $key, $column := .Columns }}{{ if $column.IsDeleted }}
+    // Soft load method
+    func (m *{{ $.Model }}) SoftLoad(q godb.Queryer) (*{{ $.Model }}, porterr.IError) {
+        loaded, e := m.Load(q)
+        if e != nil {
+            return nil, e
+        }
+        if loaded.{{ $column.ModelName }} != nil {
+            return nil, porterr.New(porterr.PortErrorSearch, "{{ $.Model }} is deleted").HTTP(http.StatusNotFound)
+        }
+        return loaded, nil
+    }
+
     // SQL Soft delete Query
     func (m *{{ $.Model }}) GetSoftDeleteQuery() string {
         return "UPDATE {{ $.Table }} SET {{ $column.Name }} = NOW() WHERE {{ $index = 0 }}{{ range $key, $col := $.Columns }}{{ if $col.IsPrimaryKey }}{{ if $index }} AND {{ end }}{{ $index = inc $index }}{{ $col.Name }} = ${{$index}}{{ end }}{{ end }} RETURNING {{ $column.Name }};"
