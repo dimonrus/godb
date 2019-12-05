@@ -110,7 +110,7 @@ func (m *{{ .Model }}) Delete(q godb.Queryer) porterr.IError {
 
 // SQL exists Query
 func (m *{{ .Model }}) GetExistsQuery() string {
-    return "SELECT EXISTS (SELECT 1 FROM {{ .Table }}) WHERE {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }} AND {{ end }}{{ $index = inc $index }}{{ $column.Name }} = ${{$index}}{{ end }}{{ end }};"
+    return "SELECT EXISTS (SELECT 1 FROM {{ .Table }} WHERE {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }} AND {{ end }}{{ $index = inc $index }}{{ $column.Name }} = ${{$index}}{{ end }}{{ end }});"
 }
 
 // Exists method
@@ -205,7 +205,7 @@ func (c *{{ .Model }}Collection) Last() *{{ .Model }} {
 
 // Iterator next
 func (c *{{ .Model }}Collection) Next() bool {
-    if c.current >= c.count {
+    if c.current >= c.count - 1 {
         c.current = -1
         return false
     }
