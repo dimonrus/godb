@@ -86,7 +86,7 @@ func (c *{{ icameled .Model }}Collection) fetch() ([]*{{ .Model }}, {{ $index = 
 }
 
 // New {{ .Model }} Collection
-func New{{ .Model }}Collection(q godb.Queryer) *BenchCollection {
+func New{{ .Model }}Collection(q godb.Queryer) *{{ icameled .Model }}Collection {
     return &{{ icameled .Model }}Collection{
         collection: nil,
         SqlFilter:  godb.NewSqlFilter(),
