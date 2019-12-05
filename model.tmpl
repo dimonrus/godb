@@ -237,10 +237,10 @@ func (m *{{ .Model }}) IsExists(q godb.Queryer) (exists bool, e porterr.IError) 
     func (m *{{ .Model }}) Save(q godb.Queryer) (*{{ .Model }}, porterr.IError) {
         var err error
         if {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }} && {{ end }}{{ $index = inc $index }} m.{{ $column.ModelName }} != {{ if eq $column.ModelType "string" }}""{{ else }}0{{ end }}{{ end }}{{ end }} {
-            err = q.QueryRow(m.GetSaveQuery(), {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if or (not (system $column)) $column.IsPrimaryKey }}{{ if $index }}, {{ end }}&m.{{ $column.ModelName }}{{ $index = inc $index }}{{ end}}{{ end}}).
+            err = q.QueryRow(m.GetSaveQuery(), {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if or (not (system $column)) $column.IsPrimaryKey }}{{ if $index }}, {{ end }}{{ if $column.IsArray }}pq.Array({{ end }}&m.{{ $column.ModelName }}{{ if $column.IsArray }}){{ end }}{{ $index = inc $index }}{{ end}}{{ end}}).
             Scan({{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if (system $column) }}{{ if $index }}, {{ end }}&m.{{ $column.ModelName }}{{ $index = inc $index }}{{ end}}{{ end}})
         } else {
-            err = q.QueryRow(m.GetSaveQuery(), {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if not (system $column) }}{{ if $index }}, {{ end }}&m.{{ $column.ModelName }}{{ $index = inc $index }}{{ end}}{{ end}}).
+            err = q.QueryRow(m.GetSaveQuery(), {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if not (system $column) }}{{ if $index }}, {{ end }}{{ if $column.IsArray }}pq.Array({{ end }}&m.{{ $column.ModelName }}{{ if $column.IsArray  }}){{ end }}{{ $index = inc $index }}{{ end}}{{ end}}).
             Scan({{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if (system $column) }}{{ if $index }}, {{ end }}&m.{{ $column.ModelName }}{{ $index = inc $index }}{{ end}}{{ end}})
         }
         if err != nil {
@@ -263,7 +263,7 @@ func (m *{{ .Model }}) IsExists(q godb.Queryer) (exists bool, e porterr.IError) 
 {{ else }}
     // Model saver method without sequence
     func (m *{{ .Model }}) Save(q godb.Queryer) (*{{ .Model }}, porterr.IError) {
-        err := q.QueryRow(m.GetSaveQuery(), {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if or (not (system $column)) $column.IsPrimaryKey }}{{ if $index }}, {{ end }}&m.{{ $column.ModelName }}{{ $index = inc $index }}{{ end}}{{ end}}).
+        err := q.QueryRow(m.GetSaveQuery(), {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if or (not (system $column)) $column.IsPrimaryKey }}{{ if $index }}, {{ end }}{{ if $column.IsArray }}pq.Array({{ end }}&m.{{ $column.ModelName }}{{ if $column.IsArray  }}){{ end }}{{ $index = inc $index }}{{ end}}{{ end}}).
         Scan({{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if (system $column) }}{{ if $index }}, {{ end }}&m.{{ $column.ModelName }}{{ $index = inc $index }}{{ end}}{{ end}})
         if err != nil {
             return nil, porterr.New(porterr.PortErrorDatabaseQuery, "Save {{ .Model }} error: "+err.Error())
