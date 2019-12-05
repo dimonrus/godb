@@ -90,6 +90,11 @@ type {{ .Model }} struct { {{ range $key, $column := .Columns }}
     {{ $column.ModelName }} {{ $column.ModelType }} {{ $column.Json }} {{ if $column.Description }}// {{ $column.Description }}{{ end }}{{ end }}
 }
 
+// Model table name
+func (m *{{ .Model }}) Table() string {
+    return "{{ .Table }}"
+}
+
 // Model columns
 func (m *{{ .Model }}) Columns() []string {
     return []string{ {{ range $key, $column := .Columns }}{{ if $key }}, {{ end }}"{{ $column.Name }}"{{ end }} }
@@ -247,27 +252,3 @@ func (m *{{ .Model }}) IsExists(q godb.Queryer) (exists bool, e porterr.IError) 
         {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if (system $column) }}{{ if eq $index 0 }}RETURNING {{ end }}{{ if $index }}, {{ end }}{{ $index = inc $index }}{{ $column.Name }}{{ end}}{{ end}};`
     }
 {{ end }}
-
-// Search by filter
-func Search{{ .Model }}(q godb.Queryer, filter *godb.SqlFilter) ({{ .Model }}Collection, {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }}, {{ end }}{{ $index = inc $index }}[]{{ $column.ModelType }}{{ end }}{{ end }}, porterr.IError) {
-    query := fmt.Sprintf("SELECT " + strings.Join((&{{ .Model }}{}).Columns(), ",") + " FROM {{ .Table }} %s", filter.GetWithWhere())
-    rows, err := q.Query(query, filter.GetArguments()...)
-    {{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}
-        entity{{ $column.ModelName }}s := make([]{{ $column.ModelType }}, 0){{ end }}{{ end }}
-    if err != nil {
-        return nil, {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }}, {{ end }}{{ $index = inc $index }}entity{{ $column.ModelName }}s{{ end }}{{ end }}, porterr.New(porterr.PortErrorDatabaseQuery, "Search {{ .Model }} query error: "+err.Error())
-    }
-    defer rows.Close()
-    var result {{ .Model }}Collection
-    for rows.Next() {
-        model := &{{ .Model }}{}
-        err = rows.Scan(model.Values()...)
-        if err != nil {
-            return result, {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }}, {{ end }}{{ $index = inc $index }}entity{{ $column.ModelName }}s{{ end }}{{ end }}, porterr.New(porterr.PortErrorIO, "Search {{ .Model }} scan error: "+err.Error())
-        }
-        {{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}
-            entity{{ $column.ModelName }}s = append(entity{{ $column.ModelName }}s, model.{{ $column.ModelName}}){{ end }}{{ end }}
-        result = append(result, model)
-    }
-    return result, {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }}, {{ end }}{{ $index = inc $index }}entity{{ $column.ModelName }}s{{ end }}{{ end }}, nil
-}
