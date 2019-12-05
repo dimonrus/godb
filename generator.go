@@ -252,6 +252,13 @@ func getHelperFunc(systemColumns SystemColumns) template.FuncMap {
 			}
 			return cameled
 		},
+		"icameled": func(name string) string {
+			cameled, err := gohelp.ToCamelCase(name, false)
+			if err != nil {
+				panic(err)
+			}
+			return cameled
+		},
 	}
 }
 
