@@ -8,7 +8,7 @@ import (
 type {{ .Model }}Items []*{{ .Model }}
 
 // Collection of {{ .Model }}
-type {{ icameled .Model }}Collection struct {
+type {{ .Model }}Collection struct {
     collection {{ .Model }}Items
     {{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }} {{ $column.ModelName }}s []{{ $column.ModelType }} {{ end }}
     {{ end }}
@@ -20,7 +20,7 @@ type {{ icameled .Model }}Collection struct {
 }
 
 // Get first item of {{ .Model }} Collection
-func (c {{ icameled .Model }}Collection) First() *{{ .Model }} {
+func (c {{ .Model }}Collection) First() *{{ .Model }} {
     if len(c.collection) > 0 {
         return c.collection[0]
     }
@@ -28,7 +28,7 @@ func (c {{ icameled .Model }}Collection) First() *{{ .Model }} {
 }
 
 // Get last item of {{ .Model }} Collection
-func (c *{{ icameled .Model }}Collection) Last() *{{ .Model }} {
+func (c *{{ .Model }}Collection) Last() *{{ .Model }} {
     if c.count > 0 {
         return c.collection[c.count-1]
     }
@@ -36,14 +36,7 @@ func (c *{{ icameled .Model }}Collection) Last() *{{ .Model }} {
 }
 
 // Iterator next
-func (c *{{ icameled .Model }}Collection) Next() bool {
-    if c.collection == nil {
-        c.collection, {{ $index := 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }}, {{ end }}{{ $index = inc $index }}c.{{ $column.ModelName }}s{{ end }}{{ end }}, c.e = c.fetch()
-        if c.e != nil {
-            return false
-        }
-        c.count = len(c.collection)
-    }
+func (c *{{ .Model }}Collection) Next() bool {
     if c.current >= c.count {
         c.current = 0
         return false
@@ -51,31 +44,46 @@ func (c *{{ icameled .Model }}Collection) Next() bool {
     return true
 }
 
+// Load collection
+func (c *{{ .Model }}Collection) Load() porterr.IError {
+    c.collection, {{ $index := 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }}, {{ end }}{{ $index = inc $index }}c.{{ $column.ModelName }}s{{ end }}{{ end }}, c.e = c.fetch()
+    if c.e != nil {
+        return c.e
+    }
+    c.count = len(c.collection)
+    return nil
+}
+
 // Reset cursor
-func (c *{{ icameled .Model }}Collection) ResetCursor() *{{ icameled .Model }}Collection {
+func (c *{{ .Model }}Collection) ResetCursor() *{{ .Model }}Collection {
     c.current = 0
     return c
 }
 
 // Get item
-func (c *{{ icameled .Model }}Collection) Item() (item *{{ .Model }}) {
+func (c *{{ .Model }}Collection) Item() (item *{{ .Model }}) {
     item = c.collection[c.current]
     c.current++
     return
 }
 
+// Get count
+func (c *{{ .Model }}Collection) Count() int {
+    return c.count
+}
+
 // Get all items
-func (c *{{ icameled .Model }}Collection) Items() {{ .Model }}Items {
+func (c *{{ .Model }}Collection) Items() {{ .Model }}Items {
     return c.collection
 }
 
 // Get error
-func (c *{{ icameled .Model }}Collection) GetError() porterr.IError {
+func (c *{{ .Model }}Collection) GetError() porterr.IError {
     return c.e
 }
 
 // Fetch records
-func (c *{{ icameled .Model }}Collection) fetch() ({{ .Model }}Items, {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }}, {{ end }}{{ $index = inc $index }}[]{{ $column.ModelType }}{{ end }}{{ end }}, porterr.IError) {
+func (c *{{ .Model }}Collection) fetch() ({{ .Model }}Items, {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }}, {{ end }}{{ $index = inc $index }}[]{{ $column.ModelType }}{{ end }}{{ end }}, porterr.IError) {
     query := fmt.Sprintf("SELECT " + strings.Join((&{{ .Model }}{}).Columns(), ",") + " FROM {{ .Table }} %s", c.GetWithWhere())
     rows, err := c.q.Query(query, c.GetArguments()...)
     {{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}
@@ -99,8 +107,8 @@ func (c *{{ icameled .Model }}Collection) fetch() ({{ .Model }}Items, {{ $index 
 }
 
 // New {{ .Model }} Collection
-func New{{ .Model }}Collection(q godb.Queryer) *{{ icameled .Model }}Collection {
-    return &{{ icameled .Model }}Collection{
+func New{{ .Model }}Collection(q godb.Queryer) *{{ .Model }}Collection {
+    return &{{ .Model }}Collection{
         collection: nil,
         SqlFilter:  godb.NewSqlFilter(),
         q:          q,
