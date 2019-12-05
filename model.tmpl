@@ -5,9 +5,11 @@ import (
 {{ end }}
 )
 
+type {{ .Model }}Items []*{{ .Model }}
+
 // Collection of {{ .Model }}
 type {{ icameled .Model }}Collection struct {
-    collection []*{{ .Model }}
+    collection {{ .Model }}Items
     {{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }} {{ $column.ModelName }}s []{{ $column.ModelType }} {{ end }}
     {{ end }}
     e          porterr.IError
@@ -49,11 +51,22 @@ func (c *{{ icameled .Model }}Collection) Next() bool {
     return true
 }
 
+// Reset cursor
+func (c *{{ icameled .Model }}Collection) ResetCursor() *{{ icameled .Model }}Collection {
+    c.current = 0
+    return c
+}
+
 // Get item
 func (c *{{ icameled .Model }}Collection) Item() (item *{{ .Model }}) {
     item = c.collection[c.current]
     c.current++
     return
+}
+
+// Get all items
+func (c *{{ icameled .Model }}Collection) Items() {{ .Model }}Items {
+    return c.collection
 }
 
 // Get error
@@ -62,7 +75,7 @@ func (c *{{ icameled .Model }}Collection) GetError() porterr.IError {
 }
 
 // Fetch records
-func (c *{{ icameled .Model }}Collection) fetch() ([]*{{ .Model }}, {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }}, {{ end }}{{ $index = inc $index }}[]{{ $column.ModelType }}{{ end }}{{ end }}, porterr.IError) {
+func (c *{{ icameled .Model }}Collection) fetch() ({{ .Model }}Items, {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }}, {{ end }}{{ $index = inc $index }}[]{{ $column.ModelType }}{{ end }}{{ end }}, porterr.IError) {
     query := fmt.Sprintf("SELECT " + strings.Join((&{{ .Model }}{}).Columns(), ",") + " FROM {{ .Table }} %s", c.GetWithWhere())
     rows, err := c.q.Query(query, c.GetArguments()...)
     {{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}
@@ -71,7 +84,7 @@ func (c *{{ icameled .Model }}Collection) fetch() ([]*{{ .Model }}, {{ $index = 
         return nil, {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }}, {{ end }}{{ $index = inc $index }}entity{{ $column.ModelName }}s{{ end }}{{ end }}, porterr.New(porterr.PortErrorDatabaseQuery, "Search {{ .Model }} query error: "+err.Error())
     }
     defer rows.Close()
-    var result []*{{ .Model }}
+    var result {{ .Model }}Items
     for rows.Next() {
         model := &{{ .Model }}{}
         err = rows.Scan(model.Values()...)
