@@ -262,7 +262,7 @@ func (c *{{ .Model }}Collection) fetch() ({{ .Model }}Items, {{ $index = 0 }}{{ 
         return nil, {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }}, {{ end }}{{ $index = inc $index }}entity{{ $column.ModelName }}s{{ end }}{{ end }}, porterr.New(porterr.PortErrorDatabaseQuery, "Search {{ .Model }} query error: "+err.Error())
     }
     defer rows.Close()
-    var result {{ .Model }}Items
+    var result = make({{ .Model }}Items, 0)
     for rows.Next() {
         model := &{{ .Model }}{}
         err = rows.Scan(model.Values()...)
