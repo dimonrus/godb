@@ -181,7 +181,6 @@ type {{ .Model }}Collection struct {
     {{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }} {{ $column.ModelName }}s []{{ $column.ModelType }} {{ end }}
     {{ end }}
     e          porterr.IError
-    q          godb.Queryer
     current    int
     count      int
     *godb.SqlFilter
@@ -214,8 +213,8 @@ func (c *{{ .Model }}Collection) Next() bool {
 }
 
 // Load collection
-func (c *{{ .Model }}Collection) Load() porterr.IError {
-    c.collection, {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }}, {{ end }}{{ $index = inc $index }}c.{{ $column.ModelName }}s{{ end }}{{ end }}, c.e = c.fetch()
+func (c *{{ .Model }}Collection) Load(q godb.Queryer) porterr.IError {
+    c.collection, {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }}, {{ end }}{{ $index = inc $index }}c.{{ $column.ModelName }}s{{ end }}{{ end }}, c.e = c.fetch(q)
     if c.e != nil {
         return c.e
     }
@@ -253,9 +252,9 @@ func (c *{{ .Model }}Collection) GetError() porterr.IError {
 }
 
 // Fetch records
-func (c *{{ .Model }}Collection) fetch() ({{ .Model }}Items, {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }}, {{ end }}{{ $index = inc $index }}[]{{ $column.ModelType }}{{ end }}{{ end }}, porterr.IError) {
+func (c *{{ .Model }}Collection) fetch(q godb.Queryer) ({{ .Model }}Items, {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }}, {{ end }}{{ $index = inc $index }}[]{{ $column.ModelType }}{{ end }}{{ end }}, porterr.IError) {
     query := fmt.Sprintf("SELECT " + strings.Join((&{{ .Model }}{}).Columns(), ",") + " FROM {{ .Table }} %s", c.GetWithWhere())
-    rows, err := c.q.Query(query, c.GetArguments()...)
+    rows, err := q.Query(query, c.GetArguments()...)
     {{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}
         entity{{ $column.ModelName }}s := make([]{{ $column.ModelType }}, 0){{ end }}{{ end }}
     if err != nil {
@@ -277,11 +276,10 @@ func (c *{{ .Model }}Collection) fetch() ({{ .Model }}Items, {{ $index = 0 }}{{ 
 }
 
 // New {{ .Model }} Collection
-func New{{ .Model }}Collection(q godb.Queryer) *{{ .Model }}Collection {
+func New{{ .Model }}Collection() *{{ .Model }}Collection {
     return &{{ .Model }}Collection{
         collection: nil,
         SqlFilter:  godb.NewSqlFilter(),
-        q:          q,
         current:    -1,
     }
 }
