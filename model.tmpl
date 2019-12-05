@@ -231,10 +231,10 @@ func (c *{{ .Model }}Collection) ResetCursor() *{{ .Model }}Collection {
 
 // Get item
 func (c *{{ .Model }}Collection) Item() (item *{{ .Model }}) {
-    if c.current == -1 || c.current >= c.count {
-        return nil
+    if c.current < c.count && c.current > -1 {
+        return  c.collection[c.current]
     }
-    return c.collection[c.current]
+    return nil
 }
 
 // Get count
@@ -282,5 +282,6 @@ func New{{ .Model }}Collection(q godb.Queryer) *{{ .Model }}Collection {
         collection: nil,
         SqlFilter:  godb.NewSqlFilter(),
         q:          q,
+        current:    -1,
     }
 }
