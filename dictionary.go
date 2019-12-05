@@ -98,9 +98,9 @@ CREATE INDEX IF NOT EXISTS dictionary_type_idx ON dictionary (type);`
 // Create or update dictionary mapping
 func GenerateDictionaryMapping(path string, q Queryer) error {
 	filter := SqlFilter{}
-	filter.AddOrder("type", "ASC")
-	filter.AddOrder("created_at", "ASC")
-	filter.AddOrder("id", "ASC")
+	filter.AddOrder("type")
+	filter.AddOrder("created_at")
+	filter.AddOrder("id")
 	dictionaries, _, err := (&DictionaryModel{}).SearchDictionary(q, filter)
 	if err != nil {
 		return err

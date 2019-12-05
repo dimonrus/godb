@@ -7,12 +7,6 @@ import (
 	"strings"
 )
 
-// Order
-type sqlOrder struct {
-	Field     string
-	Direction string
-}
-
 // SQL Pagination limit offset
 type sqlPagination struct {
 	Limit  int
@@ -22,24 +16,10 @@ type sqlPagination struct {
 // Filter struct
 type SqlFilter struct {
 	where      Condition
-	orders     []sqlOrder
+	orders     []string
 	group      []string
 	having     Condition
 	pagination sqlPagination
-}
-
-// Add or filter
-// Deprecated: use where Condition merge
-func (f *SqlFilter) AddOrFilters(filter ...*SqlFilter) *SqlFilter {
-	args := make([]interface{}, 0)
-	conditions := make([]string, 0, len(filter))
-	for i := range filter {
-		if len(filter[i].GetArguments()) > 0 {
-			args = append(args, filter[i].GetArguments()...)
-		}
-		conditions = append(conditions, filter[i].String())
-	}
-	return f.AddExpression("("+strings.Join(conditions, " OR ")+")", args)
 }
 
 // Where conditions
@@ -52,51 +32,15 @@ func (f *SqlFilter) Having() *Condition {
 	return &f.having
 }
 
-// Add filed to filter
-// Deprecated: use where Condition merge
-func (f *SqlFilter) AddFiledFilter(field string, condition string, value interface{}) *SqlFilter {
-	f.where.AddExpression(field + " " + condition + " ?", value)
-	return f
-}
-
-// Add in Filter
-// Deprecated: use where Condition merge
-func (f *SqlFilter) AddInFilter(field string, values []interface{}) *SqlFilter {
-	condition := make([]string, len(values))
-	for i := range condition {
-		condition[i] = "?"
-	}
-	f.where.AddExpression(fmt.Sprintf("%s IN (%s)", field, strings.Join(condition, ",")), values...)
-	return f
-}
-
-// Add not in filter
-// Deprecated: use where Condition merge
-func (f *SqlFilter) AddNotInFilter(field string, values []interface{}) *SqlFilter {
-	condition := make([]string, len(values))
-	for i := range condition {
-		condition[i] = "?"
-	}
-	f.where.AddExpression(fmt.Sprintf("%s NOT IN (%s)", field, strings.Join(condition, ",")), values...)
-	return f
-}
-
-// Add filter expression
-// Deprecated: use where or having Condition merge
-func (f *SqlFilter) AddExpression(expression string, values []interface{}) *SqlFilter {
-	f.where.AddExpression(expression, values...)
-	return f
-}
-
 // Add Order
-func (f *SqlFilter) AddOrder(field string, direction string) *SqlFilter {
-	f.orders = append(f.orders, sqlOrder{Field: field, Direction: direction})
+func (f *SqlFilter) AddOrder(expression string) *SqlFilter {
+	f.orders = append(f.orders, expression)
 	return f
 }
 
 // Reset Order
 func (f *SqlFilter) ResetOrder() *SqlFilter {
-	f.orders = []sqlOrder{}
+	f.orders = []string{}
 	return f
 }
 
@@ -145,7 +89,7 @@ func (f SqlFilter) String() string {
 
 	// Prepare orders
 	for _, value := range f.orders {
-		orders = append(orders, value.Field+" "+value.Direction)
+		orders = append(orders, value)
 	}
 	if len(orders) > 0 {
 		result = append(result, "ORDER BY "+strings.Join(orders, ", "))

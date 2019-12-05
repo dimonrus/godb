@@ -314,11 +314,11 @@ func TestMakeModel(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = MakeModel(db, "models", "public", "apple_attribute", "model.tmpl")
+	err = MakeModel(db, "models", "public", "apple_attribute", "model.tmpl", DefaultSystemColumns)
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = MakeModel(db, "models", "public", "apple_property", "model.tmpl")
+	err = MakeModel(db, "models", "public", "apple_property", "model.tmpl", DefaultSystemColumns)
 	if err != nil {
 		t.Fatal(err)
 	}

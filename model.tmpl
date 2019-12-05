@@ -6,14 +6,83 @@ import (
 )
 
 // Collection of {{ .Model }}
-type {{ .Model }}Collection []*{{ .Model }}
+type {{ .Model }}Collection struct {
+    collection []*{{ .Model }}
+    {{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }} {{ $column.ModelName }}s []{{ $column.ModelType }} {{ end }}
+    {{ end }}
+    e          porterr.IError
+    q          godb.Queryer
+    current    int
+    count      int
+    *godb.SqlFilter
+}
 
 // Get first item of {{ .Model }} Collection
 func (c {{ .Model }}Collection) First() *{{ .Model }} {
-    if len(c) > 0 {
-        return c[0]
+    if len(c.collection) > 0 {
+        return c.collection[0]
     }
     return nil
+}
+
+// Get last item of {{ .Model }} Collection
+func (c *{{ .Model }}Collection) Last() *{{ .Model }} {
+    if c.count > 0 {
+        return c.collection[c.count-1]
+    }
+    return nil
+}
+
+// Iterator next
+func (c *{{ .Model }}Collection) Next() bool {
+    if c.collection == nil {
+        c.collection, {{ $index := 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }}, {{ end }}{{ $index = inc $index }}c.{{ $column.ModelName }}s{{ end }}{{ end }}, c.e = c.fetch()
+        if c.e != nil {
+            return false
+        }
+        c.count = len(c.collection)
+    }
+    if c.current >= c.count {
+        c.current = 0
+        return false
+    }
+    return true
+}
+
+// Get item
+func (c *{{ .Model }}Collection) Item() (item *{{ .Model }}) {
+    item = c.collection[c.current]
+    c.current++
+    return
+}
+
+// Get error
+func (c *{{ .Model }}Collection) GetError() porterr.IError {
+    return c.e
+}
+
+// Fetch records
+func (c *{{ .Model }}Collection) fetch() ([]*{{ .Model }}, {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }}, {{ end }}{{ $index = inc $index }}[]{{ $column.ModelType }}{{ end }}{{ end }}, porterr.IError) {
+    query := fmt.Sprintf("SELECT " + strings.Join((&{{ .Model }}{}).Columns(), ",") + " FROM {{ .Table }} %s", c.GetWithWhere())
+    rows, err := c.q.Query(query, c.GetArguments()...)
+    {{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}
+        entity{{ $column.ModelName }}s := make([]{{ $column.ModelType }}, 0){{ end }}{{ end }}
+    if err != nil {
+        return nil, {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }}, {{ end }}{{ $index = inc $index }}entity{{ $column.ModelName }}s{{ end }}{{ end }}, porterr.New(porterr.PortErrorDatabaseQuery, "Search {{ .Model }} query error: "+err.Error())
+    }
+    defer rows.Close()
+    var result []*{{ .Model }}
+    for rows.Next() {
+        model := &{{ .Model }}{}
+        err = rows.Scan(model.Values()...)
+        if err != nil {
+            return result, {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }}, {{ end }}{{ $index = inc $index }}entity{{ $column.ModelName }}s{{ end }}{{ end }}, porterr.New(porterr.PortErrorIO, "Search {{ .Model }} scan error: "+err.Error())
+        }
+        {{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}
+            entity{{ $column.ModelName }}s = append(entity{{ $column.ModelName }}s, model.{{ $column.ModelName}}){{ end }}{{ end }}
+        result = append(result, model)
+    }
+    return result, {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }}, {{ end }}{{ $index = inc $index }}entity{{ $column.ModelName }}s{{ end }}{{ end }}, nil
 }
 
 // {{ .Model }} model
@@ -33,7 +102,7 @@ func (m *{{ .Model }}) Values() (values []interface{}) {
 
 // SQL load Query
 func (m *{{ .Model }}) GetLoadQuery() string {
-    return "SELECT " + strings.Join(m.Columns(), ",") + " FROM {{ .Table }} WHERE {{ $index := 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }} AND {{ end }}{{ $index = inc $index }}{{ $column.Name }} = ${{ $index }}{{ end }}{{ end }};"
+    return "SELECT " + strings.Join(m.Columns(), ",") + " FROM {{ .Table }} WHERE {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }} AND {{ end }}{{ $index = inc $index }}{{ $column.Name }} = ${{ $index }}{{ end }}{{ end }};"
 }
 
 // Load method
