@@ -142,7 +142,7 @@ func (m *{{ .Model }}) IsExists(q godb.Queryer) (exists bool, e porterr.IError) 
     // SQL upsert Query
     func (m *{{ .Model }}) GetSaveQuery() string {
         if {{ $index := 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }} && {{ end }}{{ $index = inc $index }} m.{{ $column.ModelName }} != {{ if eq $column.ModelType "string" }}""{{ else }}0{{ end }}{{ end }}{{ end }} {
-            return `UPDATE {{ .Table }} SET {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if not (system $column) }}{{ if $index }}, {{ end }}{{ $index = inc $index }}{{ $column.Name }} = ${{ inc $key }}{{ end }}{{ end }}{{ range $key, $column := .Columns }}{{ if eq $column.Name "updated_at" }}, updated_at = NOW(){{ end }}{{ end }}
+            return `UPDATE {{ .Table }} SET {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if not (system $column) }}{{ if $index }}, {{ end }}{{ $index = inc $index }}{{ $column.Name }} = ${{ $index }}{{ end }}{{ end }}{{ range $key, $column := .Columns }}{{ if eq $column.Name "updated_at" }}, updated_at = NOW(){{ end }}{{ end }}
             WHERE {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }} AND {{ end }}{{ $index = inc $index }}{{ $column.Name }} = ${{ $index }}{{ end }}{{ end }}
             {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if (system $column) }}{{ if eq $index 0 }}RETURNING {{ end }}{{ if $index }}, {{ end }}{{ $column.Name }}{{ $index = inc $index }}{{ end}}{{ end}};`
         }
@@ -164,7 +164,7 @@ func (m *{{ .Model }}) IsExists(q godb.Queryer) (exists bool, e porterr.IError) 
     // SQL upsert Query
     func (m *{{ .Model }}) GetSaveQuery() string {
         if {{ $index := 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }} && {{ end }}{{ $index = inc $index }} m.{{ $column.ModelName }} != {{ if eq $column.ModelType "string" }}""{{ else }}0{{ end }}{{ end }}{{ end }} {
-            return `UPDATE {{ .Table }} SET {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if not (system $column) }}{{ if $index }}, {{ end }}{{ $index = inc $index }}{{ $column.Name }} = ${{ inc $key }}{{ end }}{{ end }}{{ range $key, $column := .Columns }}{{ if eq $column.Name "updated_at" }}, updated_at = NOW(){{ end }}{{ end }}
+            return `UPDATE {{ .Table }} SET {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if not (system $column) }}{{ if $index }}, {{ end }}{{ $index = inc $index }}{{ $column.Name }} = ${{ $index }}{{ end }}{{ end }}{{ range $key, $column := .Columns }}{{ if eq $column.Name "updated_at" }}, updated_at = NOW(){{ end }}{{ end }}
             WHERE {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }} AND {{ end }}{{ $index = inc $index }}{{ $column.Name }} = ${{ $index }}{{ end }}{{ end }}
             {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if (system $column) }}{{ if eq $index 0 }}RETURNING {{ end }}{{ if $index }}, {{ end }}{{ $column.Name }}{{ $index = inc $index }}{{ end}}{{ end}};`
         }
