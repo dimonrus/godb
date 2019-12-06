@@ -259,6 +259,16 @@ func getHelperFunc(systemColumns SystemColumns) template.FuncMap {
 			}
 			return cameled
 		},
+		"foreign": func(name string) string {
+			if name[len(name)-3:] == "_id" {
+				name = name[:len(name)-3]
+			}
+			cameled, err := gohelp.ToCamelCase(name, true)
+			if err != nil {
+				panic(err)
+			}
+			return cameled
+		},
 	}
 }
 
