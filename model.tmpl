@@ -178,6 +178,8 @@ type {{ .Model }}Items []*{{ .Model }}
 // Collection of {{ .Model }}
 type {{ .Model }}Collection struct {
     collection {{ .Model }}Items
+    From       func() string
+    Columns    func(column ...string) []string
     {{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }} {{ $column.ModelName }}s []{{ $column.ModelType }} {{ end }}
     {{ end }}
     e          porterr.IError
@@ -251,10 +253,26 @@ func (c *{{ .Model }}Collection) GetError() porterr.IError {
     return c.e
 }
 
+// Get {{ .Model }} fetch query
+func (c *{{ .Model }}Collection) fetchQuery() string {
+    var columns []string
+    if c.Columns != nil {
+        columns = c.Columns()
+    } else {
+        columns = (&{{ .Model }}{}).Columns()
+    }
+    var from string
+    if c.From != nil {
+        from = c.From()
+    } else {
+        from = "{{ .Table }}"
+    }
+    return fmt.Sprintf("SELECT "+strings.Join(columns, ",")+" FROM "+from+" %s", c.GetWithWhere())
+}
+
 // Fetch records
 func (c *{{ .Model }}Collection) fetch(q godb.Queryer) ({{ .Model }}Items, {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }}, {{ end }}{{ $index = inc $index }}[]{{ $column.ModelType }}{{ end }}{{ end }}, porterr.IError) {
-    query := fmt.Sprintf("SELECT " + strings.Join((&{{ .Model }}{}).Columns(), ",") + " FROM {{ .Table }} %s", c.GetWithWhere())
-    rows, err := q.Query(query, c.GetArguments()...)
+    rows, err := q.Query(c.fetchQuery(), c.GetArguments()...)
     {{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}
         entity{{ $column.ModelName }}s := make([]{{ $column.ModelType }}, 0){{ end }}{{ end }}
     if err != nil {
