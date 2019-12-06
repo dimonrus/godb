@@ -46,8 +46,8 @@ func (m *{{ .Model }}) Load(q godb.Queryer) (*{{ .Model }}, porterr.IError) {
 }
 
 {{ range $key, $column := .Columns }}{{ if $column.ForeignTable }}
-    // Load Foreign Model {{ foreign $column.ForeignColumnName }}
-    func (m *{{ $.Model }}) Get{{ foreign $column.ForeignColumnName }}(q godb.Queryer) (*{{ cameled $column.ForeignTable }}, porterr.IError) {
+    // Load Foreign Model {{ foreign $column.Name }}
+    func (m *{{ $.Model }}) Get{{ foreign $column.Name }}(q godb.Queryer) (*{{ cameled $column.ForeignTable }}, porterr.IError) {
         return (&{{ cameled $column.ForeignTable }} { {{ cameled $column.ForeignColumnName }}:m.{{ $column.ModelName }} }).Load(q)
     }
 {{ end }}{{ end }}
