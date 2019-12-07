@@ -49,7 +49,7 @@ func (m *{{ .Model }}) Load(q godb.Queryer) porterr.IError {
     // Load Foreign Model {{ foreign $column.Name }}
     func (m *{{ $.Model }}) Get{{ foreign $column.Name }}(q godb.Queryer) (*{{ cameled $column.ForeignTable }}, porterr.IError) {
         f := &{{ cameled $column.ForeignTable }} { {{ cameled $column.ForeignColumnName }}:m.{{ $column.ModelName }} }
-        return f, m.Load(q)
+        return f, f.Load(q)
     }
 {{ end }}{{ end }}
 
