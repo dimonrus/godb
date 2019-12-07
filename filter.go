@@ -15,11 +15,50 @@ type sqlPagination struct {
 
 // Filter struct
 type SqlFilter struct {
+	columns    []string
+	from       []string
+	join       []string
 	where      Condition
 	orders     []string
 	group      []string
 	having     Condition
 	pagination sqlPagination
+}
+
+// Add column
+func (f *SqlFilter) Columns(column ...string) *SqlFilter {
+	f.columns = append(f.columns, column...)
+	return f
+}
+
+// Reset column
+func (f *SqlFilter) ResetColumns() *SqlFilter {
+	f.columns = []string{}
+	return f
+}
+
+// Add from
+func (f *SqlFilter) From(table ...string) *SqlFilter {
+	f.from = append(f.from, table...)
+	return f
+}
+
+// Reset column
+func (f *SqlFilter) ResetFrom() *SqlFilter {
+	f.from = []string{}
+	return f
+}
+
+// Add join
+func (f *SqlFilter) Relate(relation ...string) *SqlFilter {
+	f.join = append(f.join, relation...)
+	return f
+}
+
+// Reset join
+func (f *SqlFilter) ResetRelations() *SqlFilter {
+	f.join = []string{}
+	return f
 }
 
 // Where conditions
@@ -33,8 +72,8 @@ func (f *SqlFilter) Having() *Condition {
 }
 
 // Add Order
-func (f *SqlFilter) AddOrder(expression string) *SqlFilter {
-	f.orders = append(f.orders, expression)
+func (f *SqlFilter) AddOrder(expression ...string) *SqlFilter {
+	f.orders = append(f.orders, expression...)
 	return f
 }
 
@@ -69,12 +108,26 @@ func (f *SqlFilter) GetArguments() []interface{} {
 
 // Make SQL query
 func (f SqlFilter) String() string {
-	var orders []string
-	var result = make([]string, 0, 4)
+	var result = make([]string, 0, 6)
 
-	// where conditions
+	// Select columns
+	if len(f.columns) > 0 {
+		result = append(result, "SELECT "+strings.Join(f.columns, ", "))
+	}
+
+	// From table
+	if len(f.from) > 0 {
+		result = append(result, "FROM "+strings.Join(f.from, ", "))
+	}
+
+	// From table
+	if len(f.join) > 0 {
+		result = append(result, strings.Join(f.join, " "))
+	}
+
+	// Where conditions
 	if len(f.where.expression) > 0 || f.where.merge != nil {
-		result = append(result, f.where.String())
+		result = append(result, "WHERE "+f.where.String())
 	}
 
 	// Prepare groups
@@ -82,17 +135,14 @@ func (f SqlFilter) String() string {
 		result = append(result, "GROUP BY "+strings.Join(f.group, ", "))
 	}
 
-	// having expression
+	// Prepare having expression
 	if len(f.having.expression) > 0 || f.having.merge != nil {
 		result = append(result, "HAVING "+f.having.String())
 	}
 
 	// Prepare orders
-	for _, value := range f.orders {
-		orders = append(orders, value)
-	}
-	if len(orders) > 0 {
-		result = append(result, "ORDER BY "+strings.Join(orders, ", "))
+	if len(f.orders) > 0 {
+		result = append(result, "ORDER BY "+strings.Join(f.orders, ", "))
 	}
 
 	// Prepare pagination
@@ -103,16 +153,10 @@ func (f SqlFilter) String() string {
 	return strings.Join(result, " ")
 }
 
-// Get query with WHERE
-func (f SqlFilter) GetWithWhere() string {
-	if len(f.where.expression) > 0 || f.where.merge != nil {
-		return "WHERE " + f.String()
-	}
-
-	return f.String()
-}
-
 // New SQL Filter with pagination
 func NewSqlFilter() *SqlFilter {
-	return &SqlFilter{where: Condition{operator: ConditionOperatorAnd}}
+	return &SqlFilter{
+		where:  Condition{operator: ConditionOperatorAnd},
+		having: Condition{operator: ConditionOperatorAnd},
+	}
 }

@@ -42,7 +42,7 @@ func (m *DictionaryModel) parse(rows *sql.Rows) (*DictionaryModel, error) {
 
 // Search by filer
 func (m *DictionaryModel) SearchDictionary(q Queryer, filter SqlFilter) (*[]DictionaryModel, []int, error) {
-	query := fmt.Sprintf("SELECT "+strings.Join((&DictionaryModel{}).Columns(), ",")+" FROM public.dictionary %s", filter.GetWithWhere())
+	query := fmt.Sprintf("SELECT "+strings.Join((&DictionaryModel{}).Columns(), ",")+" FROM public.dictionary %s", filter.String())
 	rows, err := q.Query(query, filter.GetArguments()...)
 
 	entityIds := make([]int, 0)

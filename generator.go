@@ -301,7 +301,6 @@ func MakeModel(db Queryer, path string, schema string, table string, templatePat
 	var imports = []string{
 		`"strings"`,
 		`"database/sql"`,
-		`"fmt"`,
 		`"net/http"`,
 		`"github.com/dimonrus/godb"`,
 		`"github.com/dimonrus/porterr"`,

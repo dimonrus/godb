@@ -4,7 +4,7 @@ import (
 {{ range $key, $import := .Imports }}{{ $import }}
 {{ end }}
 )
-{{ $index := 0 }}{{ $comma := 0 }}
+{{ $index := 0 }}{{ $comma := 0 }}{{ $isSoft := false }}
 // {{ .Model }} model
 type {{ .Model }} struct { {{ range $key, $column := .Columns }}
     {{ $column.ModelName }} {{ $column.ModelType }} {{ $column.Json }} {{ if $column.Description }}// {{ $column.Description }}{{ end }}{{ end }}
@@ -31,38 +31,39 @@ func (m *{{ .Model }}) GetLoadQuery() string {
 }
 
 // Load method
-func (m *{{ .Model }}) Load(q godb.Queryer) (*{{ .Model }}, porterr.IError) {
+func (m *{{ .Model }}) Load(q godb.Queryer) porterr.IError {
     if {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }} && {{ end }}{{ $index = inc $index }} m.{{ $column.ModelName }} != {{ if eq $column.ModelType "string" }}""{{ else }}0{{ end }}{{ end }}{{ end }} {
         err := q.QueryRow(m.GetLoadQuery(), {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }}, {{ end }}{{ $index = inc $index }}m.{{ $column.ModelName }}{{ end }}{{ end }}).Scan(m.Values()...)
         if err != nil {
             if err == sql.ErrNoRows {
-                return nil, porterr.New(porterr.PortErrorSearch, "No {{ .Model }} found").HTTP(http.StatusNotFound)
+                return porterr.New(porterr.PortErrorSearch, "No {{ .Model }} found").HTTP(http.StatusNotFound)
             }
-            return nil, porterr.New(porterr.PortErrorDatabaseQuery, "Load {{ .Model }} query error: "+err.Error())
+            return porterr.New(porterr.PortErrorDatabaseQuery, "Load {{ .Model }} query error: "+err.Error())
         }
-        return m, nil
+        return nil
     }
-    return nil, porterr.New(porterr.PortErrorParam, "No primary key for {{ .Model }} specified, nothing for load").HTTP(http.StatusBadRequest)
+    return porterr.New(porterr.PortErrorParam, "No primary key for {{ .Model }} specified, nothing for load").HTTP(http.StatusBadRequest)
 }
 
 {{ range $key, $column := .Columns }}{{ if $column.ForeignTable }}
     // Load Foreign Model {{ foreign $column.Name }}
     func (m *{{ $.Model }}) Get{{ foreign $column.Name }}(q godb.Queryer) (*{{ cameled $column.ForeignTable }}, porterr.IError) {
-        return (&{{ cameled $column.ForeignTable }} { {{ cameled $column.ForeignColumnName }}:m.{{ $column.ModelName }} }).Load(q)
+        f := &{{ cameled $column.ForeignTable }} { {{ cameled $column.ForeignColumnName }}:m.{{ $column.ModelName }} }
+        return f, m.Load(q)
     }
 {{ end }}{{ end }}
 
-{{ range $key, $column := .Columns }}{{ if $column.IsDeleted }}
+{{ range $key, $column := .Columns }}{{ if $column.IsDeleted }}{{ $isSoft = true }}
     // Soft load method
-    func (m *{{ $.Model }}) SoftLoad(q godb.Queryer) (*{{ $.Model }}, porterr.IError) {
-        loaded, e := m.Load(q)
+    func (m *{{ $.Model }}) SoftLoad(q godb.Queryer) porterr.IError {
+        e := m.Load(q)
         if e != nil {
-            return nil, e
+            return e
         }
-        if loaded.{{ $column.ModelName }} != nil {
-            return nil, porterr.New(porterr.PortErrorSearch, "{{ $.Model }} is deleted").HTTP(http.StatusNotFound)
+        if m.{{ $column.ModelName }} != nil {
+            return porterr.New(porterr.PortErrorSearch, "{{ $.Model }} is deleted").HTTP(http.StatusNotFound)
         }
-        return loaded, nil
+        return nil
     }
 
     // SQL Soft delete Query
@@ -124,7 +125,7 @@ func (m *{{ .Model }}) IsExists(q godb.Queryer) (exists bool, e porterr.IError) 
 
 {{ if .HasSequence }}
     // Model saver method with sequence
-    func (m *{{ .Model }}) Save(q godb.Queryer) (*{{ .Model }}, porterr.IError) {
+    func (m *{{ .Model }}) Save(q godb.Queryer) porterr.IError {
         var err error
         if {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }} && {{ end }}{{ $index = inc $index }} m.{{ $column.ModelName }} != {{ if eq $column.ModelType "string" }}""{{ else }}0{{ end }}{{ end }}{{ end }} {
             err = q.QueryRow(m.GetSaveQuery(), {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if or (not (system $column)) $column.IsPrimaryKey }}{{ if $index }}, {{ end }}{{ if $column.IsArray }}pq.Array({{ end }}&m.{{ $column.ModelName }}{{ if $column.IsArray }}){{ end }}{{ $index = inc $index }}{{ end}}{{ end}}).
@@ -134,9 +135,9 @@ func (m *{{ .Model }}) IsExists(q godb.Queryer) (exists bool, e porterr.IError) 
             Scan({{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if (system $column) }}{{ if $index }}, {{ end }}&m.{{ $column.ModelName }}{{ $index = inc $index }}{{ end}}{{ end}})
         }
         if err != nil {
-            return nil, porterr.New(porterr.PortErrorDatabaseQuery, "Save {{ .Model }} error: "+err.Error())
+            return porterr.New(porterr.PortErrorDatabaseQuery, "Save {{ .Model }} error: "+err.Error())
         }
-        return m, nil
+        return nil
     }
 
     // SQL upsert Query
@@ -152,13 +153,13 @@ func (m *{{ .Model }}) IsExists(q godb.Queryer) (exists bool, e porterr.IError) 
 
 {{ else }}
     // Model saver method without sequence
-    func (m *{{ .Model }}) Save(q godb.Queryer) (*{{ .Model }}, porterr.IError) {
+    func (m *{{ .Model }}) Save(q godb.Queryer) porterr.IError {
         err := q.QueryRow(m.GetSaveQuery(), {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if or (not (system $column)) $column.IsPrimaryKey }}{{ if $index }}, {{ end }}{{ if $column.IsArray }}pq.Array({{ end }}&m.{{ $column.ModelName }}{{ if $column.IsArray  }}){{ end }}{{ $index = inc $index }}{{ end}}{{ end}}).
         Scan({{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if (system $column) }}{{ if $index }}, {{ end }}&m.{{ $column.ModelName }}{{ $index = inc $index }}{{ end}}{{ end}})
         if err != nil {
-            return nil, porterr.New(porterr.PortErrorDatabaseQuery, "Save {{ .Model }} error: "+err.Error())
+            return porterr.New(porterr.PortErrorDatabaseQuery, "Save {{ .Model }} error: "+err.Error())
         }
-        return m, nil
+        return nil
     }
 
     // SQL upsert Query
@@ -173,73 +174,47 @@ func (m *{{ .Model }}) IsExists(q godb.Queryer) (exists bool, e porterr.IError) 
     }
 {{ end }}
 
+// Implement Collection
 type {{ .Model }}Items []*{{ .Model }}
 
 // Collection of {{ .Model }}
 type {{ .Model }}Collection struct {
     collection {{ .Model }}Items
-    From       func() string
-    Columns    func(column ...string) []string
+    godb.Iterator
+    *godb.SqlFilter
     {{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }} {{ $column.ModelName }}s []{{ $column.ModelType }} {{ end }}
     {{ end }}
-    current    int
-    count      int
-    *godb.SqlFilter
 }
 
-// Get first item of {{ .Model }} Collection
-func (c {{ .Model }}Collection) First() *{{ .Model }} {
+// Get first item of model collection
+func (c *{{ .Model }}Collection) First() *{{ .Model }} {
     if len(c.collection) > 0 {
         return c.collection[0]
     }
     return nil
 }
 
-// Get last item of {{ .Model }} Collection
+// Get last item of model collection
 func (c *{{ .Model }}Collection) Last() *{{ .Model }} {
-    if c.count > 0 {
-        return c.collection[c.count-1]
+    if c.Count() > 0 {
+        return c.collection[c.Count()-1]
     }
     return nil
-}
-
-// Iterator next
-func (c *{{ .Model }}Collection) Next() bool {
-    if c.current >= c.count - 1 {
-        c.current = -1
-        return false
-    }
-    c.current++
-    return true
-}
-
-// Load collection
-func (c *{{ .Model }}Collection) Load(q godb.Queryer) (e porterr.IError) {
-    c.collection, {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }}, {{ end }}{{ $index = inc $index }}c.{{ $column.ModelName }}s{{ end }}{{ end }}, e = c.fetch(q)
-    if e != nil {
-        return
-    }
-    c.count = len(c.collection)
-    return nil
-}
-
-// Reset cursor
-func (c *{{ .Model }}Collection) ResetCursor() *{{ .Model }}Collection {
-    c.current = -1
-    return c
 }
 
 // Get item
-func (c *{{ .Model }}Collection) Item() (item *{{ .Model }}) {
-    if c.current < c.count && c.current > -1 {
-        return  c.collection[c.current]
+func (c *{{ .Model }}Collection) Item() *{{ .Model }} {
+    if c.Cursor() < c.Count() && c.Cursor() > -1 {
+        return c.collection[c.Cursor()]
     }
     return nil
 }
 
-// Get count
-func (c *{{ .Model }}Collection) Count() int {
-    return c.count
+// Set items
+func (c *{{ .Model }}Collection) AddItem(item *{{ .Model }}) {
+    c.collection = append(c.collection, item)
+    c.SetCount(len(c.collection))
+    return
 }
 
 // Get all items
@@ -247,36 +222,34 @@ func (c *{{ .Model }}Collection) Items() {{ .Model }}Items {
     return c.collection
 }
 
-// Fetch records
-func (c *{{ .Model }}Collection) fetch(q godb.Queryer) ({{ .Model }}Items, {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }}, {{ end }}{{ $index = inc $index }}[]{{ $column.ModelType }}{{ end }}{{ end }}, porterr.IError) {
-    query := fmt.Sprintf("SELECT "+strings.Join(c.Columns(), ",")+" FROM "+c.From()+" %s", c.GetWithWhere())
-    rows, err := q.Query(query, c.GetArguments()...)
-    {{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}
-        entity{{ $column.ModelName }}s := make([]{{ $column.ModelType }}, 0){{ end }}{{ end }}
+// Load collection
+func (c *{{ .Model }}Collection) Load(q godb.Queryer) porterr.IError {
+    rows, err := q.Query(c.String(), c.GetArguments()...)
     if err != nil {
-        return nil, {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }}, {{ end }}{{ $index = inc $index }}entity{{ $column.ModelName }}s{{ end }}{{ end }}, porterr.New(porterr.PortErrorDatabaseQuery, "Search {{ .Model }} query error: "+err.Error())
+        return porterr.New(porterr.PortErrorDatabaseQuery, "Search {{ .Model }} query error: "+err.Error())
     }
     defer rows.Close()
-    var result = make({{ .Model }}Items, 0)
     for rows.Next() {
         model := &{{ .Model }}{}
         err = rows.Scan(model.Values()...)
         if err != nil {
-            return result, {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }}, {{ end }}{{ $index = inc $index }}entity{{ $column.ModelName }}s{{ end }}{{ end }}, porterr.New(porterr.PortErrorIO, "Search {{ .Model }} scan error: "+err.Error())
-        }
-        {{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}
-            entity{{ $column.ModelName }}s = append(entity{{ $column.ModelName }}s, model.{{ $column.ModelName}}){{ end }}{{ end }}
-        result = append(result, model)
+            return porterr.New(porterr.PortErrorIO, "Search {{ .Model }} scan error: "+err.Error())
+        }{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}
+        c.{{ $column.ModelName }}s = append(c.{{ $column.ModelName }}s, model.{{ $column.ModelName}}){{ end }}{{ end }}
+        c.collection = append(c.collection, model)
     }
-    return result, {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }}, {{ end }}{{ $index = inc $index }}entity{{ $column.ModelName }}s{{ end }}{{ end }}, nil
+    c.SetCount(len(c.collection)).Reset()
+    return nil
 }
 
 // New {{ .Model }} Collection
 func New{{ .Model }}Collection() *{{ .Model }}Collection {
-    return &{{ .Model }}Collection{
-        SqlFilter:  godb.NewSqlFilter(),
-        current:    -1,
-        From : (&{{ .Model }}).Table,
-        Columns: (&{{ .Model }}).Columns,
+    m := &{{ .Model }}{}
+    filter := godb.NewSqlFilter().Columns(m.Columns()...).From(m.Table())
+    collection := &{{ .Model }}Collection{
+        collection: make({{ .Model }}Items, 0),
+        SqlFilter:  filter,
     }
+    collection.Reset()
+    return collection
 }
