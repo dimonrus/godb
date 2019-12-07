@@ -182,7 +182,6 @@ type {{ .Model }}Collection struct {
     Columns    func(column ...string) []string
     {{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }} {{ $column.ModelName }}s []{{ $column.ModelType }} {{ end }}
     {{ end }}
-    e          porterr.IError
     current    int
     count      int
     *godb.SqlFilter
@@ -215,10 +214,10 @@ func (c *{{ .Model }}Collection) Next() bool {
 }
 
 // Load collection
-func (c *{{ .Model }}Collection) Load(q godb.Queryer) porterr.IError {
-    c.collection, {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }}, {{ end }}{{ $index = inc $index }}c.{{ $column.ModelName }}s{{ end }}{{ end }}, c.e = c.fetch(q)
-    if c.e != nil {
-        return c.e
+func (c *{{ .Model }}Collection) Load(q godb.Queryer) (e porterr.IError) {
+    c.collection, {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }}, {{ end }}{{ $index = inc $index }}c.{{ $column.ModelName }}s{{ end }}{{ end }}, e = c.fetch(q)
+    if e != nil {
+        return
     }
     c.count = len(c.collection)
     return nil
@@ -248,31 +247,10 @@ func (c *{{ .Model }}Collection) Items() {{ .Model }}Items {
     return c.collection
 }
 
-// Get error
-func (c *{{ .Model }}Collection) GetError() porterr.IError {
-    return c.e
-}
-
-// Get {{ .Model }} fetch query
-func (c *{{ .Model }}Collection) fetchQuery() string {
-    var columns []string
-    if c.Columns != nil {
-        columns = c.Columns()
-    } else {
-        columns = (&{{ .Model }}{}).Columns()
-    }
-    var from string
-    if c.From != nil {
-        from = c.From()
-    } else {
-        from = "{{ .Table }}"
-    }
-    return fmt.Sprintf("SELECT "+strings.Join(columns, ",")+" FROM "+from+" %s", c.GetWithWhere())
-}
-
 // Fetch records
 func (c *{{ .Model }}Collection) fetch(q godb.Queryer) ({{ .Model }}Items, {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }}, {{ end }}{{ $index = inc $index }}[]{{ $column.ModelType }}{{ end }}{{ end }}, porterr.IError) {
-    rows, err := q.Query(c.fetchQuery(), c.GetArguments()...)
+    query := fmt.Sprintf("SELECT "+strings.Join(c.Columns(), ",")+" FROM "+c.From()+" %s", c.GetWithWhere())
+    rows, err := q.Query(query, c.GetArguments()...)
     {{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}
         entity{{ $column.ModelName }}s := make([]{{ $column.ModelType }}, 0){{ end }}{{ end }}
     if err != nil {
@@ -296,8 +274,9 @@ func (c *{{ .Model }}Collection) fetch(q godb.Queryer) ({{ .Model }}Items, {{ $i
 // New {{ .Model }} Collection
 func New{{ .Model }}Collection() *{{ .Model }}Collection {
     return &{{ .Model }}Collection{
-        collection: nil,
         SqlFilter:  godb.NewSqlFilter(),
         current:    -1,
+        From : (&{{ .Model }}).Table,
+        Columns: (&{{ .Model }}).Columns,
     }
 }
