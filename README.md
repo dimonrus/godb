@@ -2,7 +2,7 @@ GODB
 
 The database wrapper for manage postgres db
 
-Init connection example
+#Init connection example
 
 ```
 import _ "github.com/lib/pq"
@@ -19,7 +19,7 @@ dbo, err := godb.DBO{
 
 ```
 
-Transaction functions
+#Transaction functions
 
 ```
 func StartTransaction() *godb.SqlTx {
@@ -49,4 +49,13 @@ func EndTransaction(q *godb.SqlTx, e porterr.IError) {
 tx := StartTransaction()
 defer func() { EndTransaction(tx, e) }()
 
+```
+
+#Model generator
+Will create model.go in app/models directory
+```
+err := godb.MakeModel(dbo, "app/models", "schema", "table", "vendor/github.com/dimonrus/godb/model.tmpl", godb.DefaultSystemColumnsSoft)
+if err != nil {
+   panic(err)
+}
 ```
