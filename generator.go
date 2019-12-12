@@ -36,6 +36,7 @@ type Column struct {
 	ForeignSchema     *string // DB foreign schema name
 	ForeignTable      *string // DB foreign table name
 	ForeignColumnName *string // DB foreign column name
+	ForeignIsSoft     bool    // DB foreign table is soft
 	Description       *string // DB column description
 	IsPrimaryKey      bool    // DB is primary key
 	Json              string  // Model Json name
@@ -77,6 +78,7 @@ func parseColumnRow(rows *sql.Rows) (*Column, error) {
 		&column.ForeignSchema,
 		&column.ForeignTable,
 		&column.ForeignColumnName,
+		&column.ForeignIsSoft,
 		&column.Description,
 	)
 
@@ -101,6 +103,9 @@ SELECT a.attname                                                                
        max(ccu.table_schema)                                                           AS foreign_schema,
        max(ccu.table_name)                                                             AS foreign_table,
        max(ccu.column_name)                                                            AS foreign_column_name,
+       (select EXISTS(SELECT 1
+			from information_schema.columns
+			where column_name = 'deleted_at' and table_name = max(ccu.table_name)))    AS is_foreign_soft,
        col_description(t.oid, ic.ordinal_position)                                     AS description
 FROM pg_attribute a
          JOIN pg_class t ON a.attrelid = t.oid
