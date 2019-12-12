@@ -280,6 +280,9 @@ func getHelperFunc(systemColumns SystemColumns) template.FuncMap {
 // Create file in os
 func CreateModelFile(schema string, table string, path string) (*os.File, string, error) {
 	fileName := fmt.Sprintf("%s", table)
+	if schema != "public" {
+		fileName = fmt.Sprintf("%s_%s", schema, table)
+	}
 	var filePath string
 	if path != "" {
 		folderPath := fmt.Sprintf(path)
@@ -339,6 +342,10 @@ func MakeModel(db Queryer, path string, schema string, table string, templatePat
 	columns, err := GetTableColumns(db, schema, table, systemColumns)
 	if err != nil {
 		return err
+	}
+
+	if columns == nil || len(*columns) == 0 {
+		return errors.New("No table found or no columns in table ")
 	}
 
 	// Create all foreign models if not exists
