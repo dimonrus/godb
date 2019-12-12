@@ -382,7 +382,7 @@ func MakeModel(db Queryer, path string, schema string, table string, templatePat
 				return err
 			}
 			if !found {
-				err = MakeModel(db, path, schema, *c.ForeignTable, templatePath, systemColumns)
+				err = MakeModel(db, path, *c.ForeignSchema, *c.ForeignTable, templatePath, systemColumns)
 				if err != nil {
 					return err
 				}
