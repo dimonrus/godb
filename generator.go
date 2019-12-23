@@ -232,8 +232,8 @@ ORDER BY a.attnum;`, schema, table)
 		for key, column := range columns {
 			if column.Name == "id" {
 				columns[key].IsPrimaryKey = true
-				if column.ModelType[0] == '*' {
-					column.ModelType = column.ModelType[1:]
+				if columns[key].ModelType[0] == '*' {
+					columns[key].ModelType = columns[key].ModelType[1:]
 				}
 				break
 			}
