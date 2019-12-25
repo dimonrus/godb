@@ -188,7 +188,7 @@ type {{ .Model }}Items []*{{ .Model }}
 // Collection of {{ .Model }}
 type {{ .Model }}Collection struct {
     collection {{ .Model }}Items
-    godb.Iterator
+    *godb.Iterator
     *godb.SqlFilter{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}
     {{ $column.ModelName }}s []{{ $column.ModelType }} {{ end }}{{ end }}
 }
@@ -245,7 +245,7 @@ func (c *{{ .Model }}Collection) Load(q godb.Queryer) porterr.IError {
         c.{{ $column.ModelName }}s = append(c.{{ $column.ModelName }}s, model.{{ $column.ModelName}}){{ end }}{{ end }}
         c.collection = append(c.collection, model)
     }
-    c.SetCount(len(c.collection)).Reset()
+    c.Iterator = godb.NewIterator(len(c.collection))
     return nil
 }
 
@@ -256,7 +256,7 @@ func New{{ .Model }}Collection() *{{ .Model }}Collection {
     collection := &{{ .Model }}Collection{
         collection: make({{ .Model }}Items, 0),
         SqlFilter:  filter,
+        Iterator: godb.NewIterator(0),
     }
-    collection.Reset()
     return collection
 }

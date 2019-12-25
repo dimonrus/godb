@@ -6,6 +6,14 @@ type Iterator struct {
 	count   int
 }
 
+// New Iterator
+func NewIterator(len int) *Iterator {
+	return &Iterator{
+		current: -1,
+		count:   len,
+	}
+}
+
 // Iterator next
 func (c *Iterator) Next() bool {
 	if c.current >= c.count-1 {
