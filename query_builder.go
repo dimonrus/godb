@@ -1,21 +1,13 @@
 package godb
 
-// SQL Filter
-
 import (
 	"fmt"
 	"strings"
 )
 
-// SQL Pagination limit offset
-type sqlPagination struct {
-	Limit  int
-	Offset int
-}
-
-// Filter struct
-// deprecated Use QB
-type SqlFilter struct {
+// Query Builder struct
+type QB struct {
+	with       map[string]*QB
 	columns    []string
 	from       []string
 	join       []string
@@ -26,90 +18,137 @@ type SqlFilter struct {
 	pagination sqlPagination
 }
 
+// Add With
+func (f *QB) With(name string, qb *QB) *QB {
+	if name != "" {
+		f.with[name] = qb
+	}
+	return f
+}
+
+// Reset With
+func (f *QB) ResetWith() *QB {
+	f.with = make(map[string]*QB)
+	return f
+}
+
+// Get With
+func (f *QB) GetWith(name string) *QB {
+	if v, ok := f.with[name]; ok {
+		return v
+	}
+	return nil
+}
+
 // Add column
-func (f *SqlFilter) Columns(column ...string) *SqlFilter {
+func (f *QB) Columns(column ...string) *QB {
 	f.columns = append(f.columns, column...)
 	return f
 }
 
 // Reset column
-func (f *SqlFilter) ResetColumns() *SqlFilter {
+func (f *QB) ResetColumns() *QB {
 	f.columns = []string{}
 	return f
 }
 
 // Add from
-func (f *SqlFilter) From(table ...string) *SqlFilter {
+func (f *QB) From(table ...string) *QB {
 	f.from = append(f.from, table...)
 	return f
 }
 
+// Add from model
+func (f *QB) ModelFrom(model ...IModel) *QB {
+	for _, m := range model {
+		f.from = append(f.from, m.Table())
+	}
+	return f
+}
+
+// Add column from model
+func (f *QB) ModelColumns(model ...IModel) *QB {
+	for _, m := range model {
+		f.columns = append(f.columns, m.Columns()...)
+	}
+	return f
+}
+
 // Reset column
-func (f *SqlFilter) ResetFrom() *SqlFilter {
+func (f *QB) ResetFrom() *QB {
 	f.from = []string{}
 	return f
 }
 
 // Add join
-func (f *SqlFilter) Relate(relation ...string) *SqlFilter {
+func (f *QB) Relate(relation ...string) *QB {
 	f.join = append(f.join, relation...)
 	return f
 }
 
 // Reset join
-func (f *SqlFilter) ResetRelations() *SqlFilter {
+func (f *QB) ResetRelations() *QB {
 	f.join = []string{}
 	return f
 }
 
 // Where conditions
-func (f *SqlFilter) Where() *Condition {
+func (f *QB) Where() *Condition {
 	return &f.where
 }
 
 // Where conditions
-func (f *SqlFilter) Having() *Condition {
+func (f *QB) Having() *Condition {
 	return &f.having
 }
 
 // Add Order
-func (f *SqlFilter) AddOrder(expression ...string) *SqlFilter {
+func (f *QB) AddOrder(expression ...string) *QB {
 	f.orders = append(f.orders, expression...)
 	return f
 }
 
 // Reset Order
-func (f *SqlFilter) ResetOrder() *SqlFilter {
+func (f *QB) ResetOrder() *QB {
 	f.orders = []string{}
 	return f
 }
 
 // Add Group
-func (f *SqlFilter) GroupBy(fields ...string) *SqlFilter {
+func (f *QB) GroupBy(fields ...string) *QB {
 	f.group = append(f.group, fields...)
 	return f
 }
 
 // Reset Group
-func (f *SqlFilter) ResetGroupBy() *SqlFilter {
+func (f *QB) ResetGroupBy() *QB {
 	f.group = []string{}
 	return f
 }
 
 // Set pagination
-func (f *SqlFilter) SetPagination(limit int, offset int) *SqlFilter {
+func (f *QB) SetPagination(limit int, offset int) *QB {
 	f.pagination = sqlPagination{Limit: limit, Offset: offset}
 	return f
 }
 
 // Get arguments
-func (f *SqlFilter) GetArguments() []interface{} {
+func (f *QB) GetArguments() []interface{} {
 	return append(f.where.GetArguments(), f.having.GetArguments()...)
 }
 
 // Make SQL query
-func (f SqlFilter) String() string {
-	var result = make([]string, 0, 6)
+func (f QB) String() string {
+	var result = make([]string, 0, 7)
+	var with = make([]string, 0)
+
+	// With render
+	if len(f.with) > 0 {
+		for name, w := range f.with {
+			with = append(with, name+" AS ("+w.String()+")")
+		}
+		result = append(result, "WITH "+strings.Join(with, ", "))
+	}
 
 	// Select columns
 	if len(f.columns) > 0 {
@@ -154,9 +193,10 @@ func (f SqlFilter) String() string {
 	return strings.Join(result, " ")
 }
 
-// New SQL Filter with pagination
-func NewSqlFilter() *SqlFilter {
-	return &SqlFilter{
+// New Query Builder
+func NewQB() *QB {
+	return &QB{
+		with:   make(map[string]*QB),
 		where:  Condition{operator: ConditionOperatorAnd},
 		having: Condition{operator: ConditionOperatorAnd},
 	}
