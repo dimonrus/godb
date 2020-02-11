@@ -134,12 +134,18 @@ func (f *QB) SetPagination(limit int, offset int) *QB {
 
 // Get arguments
 func (f *QB) GetArguments() []interface{} {
-	return append(f.where.GetArguments(), f.having.GetArguments()...)
+	arguments := make([]interface{}, 0)
+	if len(f.with) > 0 {
+		for _, w := range f.with {
+			arguments = append(arguments, w.GetArguments()...)
+		}
+	}
+	return append(arguments, append(f.where.GetArguments(), f.having.GetArguments()...)...)
 }
 
 // Make SQL query
 func (f QB) String() string {
-	var result = make([]string, 0, 7)
+	var result = make([]string, 0)
 	var with = make([]string, 0)
 
 	// With render

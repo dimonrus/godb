@@ -170,15 +170,11 @@ func (m *{{ .Model }}) IsExists(q godb.Queryer) (exists bool, e porterr.IError) 
         return nil
     }
 
-    // SQL upsert Query
+    // SQL Insert Update Query
     func (m *{{ .Model }}) GetSaveQuery() string {
-        if {{ $index := 0 }}{{ $comma = 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }} && {{ end }}{{ $index = inc $index }} m.{{ $column.ModelName }} != {{ if eq $column.ModelType "string" }}""{{ else }}0{{ end }}{{ end }}{{ end }} {
-            return `UPDATE {{ .Table }} SET {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if not (system $column) }}{{ if $comma }}, {{ end }}{{ $index = inc $index }}{{ $column.Name }} = ${{ $index }}{{ $comma = 1}}{{ end }}{{ end }}{{ range $key, $column := .Columns }}{{ if eq $column.Name "updated_at" }}, updated_at = NOW(){{ end }}{{ end }}
-            WHERE {{ $index = 0 }}{{ $comma = 0 }}{{ range $key, $column := .Columns }}{{ if not (system $column) }}{{ $index = inc $index }}{{ if $column.IsPrimaryKey }}{{ if $comma }} AND {{ end }}{{ $column.Name }} = ${{ $index }}{{ $comma = 1 }}{{ end }}{{ end }}{{ end }}
-            {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if (system $column) }}{{ if eq $index 0 }}RETURNING {{ end }}{{ if $index }}, {{ end }}{{ $column.Name }}{{ $index = inc $index }}{{ end}}{{ end}};`
-        }
-        return `INSERT INTO {{ .Table }} ({{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if not (system $column) }}{{ if $index }}, {{ end }}{{ $index = inc $index }}{{ $column.Name }}{{ end}}{{ end}}) VALUES ({{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if not (system $column) }}{{ if $index }}, {{ end }}{{ $index = inc $index }}${{ $index }}{{ end }}{{ end }})
-        {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if (system $column) }}{{ if eq $index 0 }}RETURNING {{ end }}{{ if $index }}, {{ end }}{{ $index = inc $index }}{{ $column.Name }}{{ end}}{{ end}};`
+        return `INSERT INTO {{ .Table }} ({{ $index := 0 }}{{ range $key, $column := .Columns }}{{ if not (system $column) }}{{ if $index }}, {{ end }}{{ $column.Name }}{{ $index = inc $index }}{{ end}}{{ end}}) VALUES ({{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if not (system $column) }}{{ if $index }}, {{ end }}{{ $index = inc $index }}${{ $index }}{{ end }}{{ end }})
+        ON CONFLICT ({{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }}, {{ end }}{{ $index = inc $index }}{{ $column.Name }}{{ end }}{{ end }}) DO UPDATE SET {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if not (system $column) }}{{ if $index }}, {{ end }}{{ $index = inc $index }}{{ $column.Name }} = ${{ $index }}{{ end }}{{ end }}{{ range $key, $column := .Columns }}{{ if eq $column.Name "updated_at" }}, updated_at = NOW(){{ end }}{{ end }}
+        {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if (system $column) }}{{ if eq $index 0 }}RETURNING {{ end }}{{ if $index }}, {{ end }}{{ $column.Name }}{{ $index = inc $index }}{{ end }}{{ end }};`
     }
 {{ end }}
 
