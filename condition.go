@@ -46,6 +46,14 @@ func (c *Condition) String() string {
 	}
 }
 
+// Check if condition is empty
+func (c *Condition) IsEmpty() bool {
+	if len(c.expression) == 0 && c.merge == nil {
+		return true
+	}
+	return false
+}
+
 // Get arguments
 func (c *Condition) GetArguments() []interface{} {
 	var arguments = make([]interface{}, 0)
@@ -55,7 +63,6 @@ func (c *Condition) GetArguments() []interface{} {
 		}
 	}
 	return append(arguments, c.argument...)
-
 }
 
 // Add expression
