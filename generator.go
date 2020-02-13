@@ -45,7 +45,8 @@ type Column struct {
 	IsCreated         bool    // Is created at column
 	IsUpdated         bool    // Is updated at column
 	IsDeleted         bool    // Is deleted at column
-
+	HasUniqueIndex    bool    // If column is a part of unique index
+	UniqueIndexName   *string // Unique index name
 }
 
 // Array of columns
@@ -80,6 +81,8 @@ func parseColumnRow(rows *sql.Rows) (*Column, error) {
 		&column.ForeignColumnName,
 		&column.ForeignIsSoft,
 		&column.Description,
+		&column.HasUniqueIndex,
+		&column.UniqueIndexName,
 	)
 
 	if err != nil {
@@ -104,13 +107,17 @@ SELECT a.attname                                                                
        max(ccu.table_name)                                                             AS foreign_table,
        max(ccu.column_name)                                                            AS foreign_column_name,
        (select EXISTS(SELECT 1
-			from information_schema.columns
-			where column_name = 'deleted_at' and table_name = max(ccu.table_name)))    AS is_foreign_soft,
-       col_description(t.oid, ic.ordinal_position)                                     AS description
+                      from information_schema.columns
+                      where column_name = 'deleted_at'
+                        and table_name = max(ccu.table_name)))                         AS is_foreign_soft,
+       col_description(t.oid, ic.ordinal_position)                                     AS description,
+       CASE WHEN(i.indisunique IS TRUE) THEN TRUE ELSE FALSE END                       AS has_unique_index,
+       ins.indexname                                                                   AS unique_index_name
 FROM pg_attribute a
          JOIN pg_class t ON a.attrelid = t.oid
          JOIN pg_namespace s ON t.relnamespace = s.oid
          LEFT JOIN pg_index i ON i.indrelid = a.attrelid AND a.attnum = ANY (i.indkey)
+         LEFT JOIN pg_indexes ins ON ins.indexdef = pg_get_indexdef(i.indexrelid)
          LEFT JOIN information_schema.columns AS ic
                    ON ic.column_name = a.attname AND ic.table_name = t.relname AND ic.table_schema = s.nspname
          LEFT JOIN information_schema.key_column_usage AS kcu
@@ -123,7 +130,8 @@ WHERE a.attnum > 0
   AND s.nspname = '%s'
   AND t.relname = '%s'
 GROUP BY a.attname, a.atttypid, a.atttypmod, a.attnotnull, s.nspname, t.relname, ic.column_default,
-         ic.table_schema, ic.table_name, ic.column_name, a.attnum, t.oid, ic.ordinal_position
+         ic.table_schema, ic.table_name, ic.column_name, a.attnum, t.oid, ic.ordinal_position, i.indisunique,
+         i.indexrelid, ins.indexname
 ORDER BY a.attnum;`, schema, table)
 
 	rows, err := dbo.Query(query)
@@ -234,8 +242,27 @@ ORDER BY a.attnum;`, schema, table)
 				columns[key].IsPrimaryKey = true
 				if columns[key].ModelType[0] == '*' {
 					columns[key].ModelType = columns[key].ModelType[1:]
+					hasPrimary = true
 				}
 				break
+			}
+		}
+		// if still no primary key
+		if !hasPrimary {
+			// Collect primary kye by unique index
+			var uniqueIndexName *string
+			for key, column := range columns {
+				if column.HasUniqueIndex {
+					if uniqueIndexName == nil {
+						uniqueIndexName = column.UniqueIndexName
+					}
+					if *uniqueIndexName == *column.UniqueIndexName {
+						columns[key].IsPrimaryKey = true
+						if columns[key].ModelType[0] == '*' {
+							columns[key].ModelType = columns[key].ModelType[1:]
+						}
+					}
+				}
 			}
 		}
 	}
