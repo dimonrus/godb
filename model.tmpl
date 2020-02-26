@@ -49,13 +49,19 @@ func (m *{{ .Model }}) Load(q godb.Queryer) porterr.IError {
     {{ if $column.ForeignIsSoft }}
     // Soft Load Foreign Model {{ foreign $column.Name }}
     func (m *{{ $.Model }}) GetSoft{{ foreign $column.Name }}(q godb.Queryer) (*{{ cameled $column.ForeignTable }}, porterr.IError) {
-        f := &{{ cameled $column.ForeignTable }} { {{ cameled $column.ForeignColumnName }}:m.{{ $column.ModelName }} }
+    {{ if $column.IsNullable }}if m.{{ $column.ModelName }} == nil {
+            return nil, porterr.New(porterr.PortErrorParam, "No foreign key for {{ cameled $column.ForeignTable }} ({{ $column.ModelName }}) specified, nothing for load").HTTP(http.StatusBadRequest)
+        }{{ end }}
+        f := &{{ cameled $column.ForeignTable }} { {{ cameled $column.ForeignColumnName }}:{{ if $column.IsNullable }}*{{ end }}m.{{ $column.ModelName }} }
         return f, f.SoftLoad(q)
     }
     {{ else }}
     // Load Foreign Model {{ foreign $column.Name }}
     func (m *{{ $.Model }}) Get{{ foreign $column.Name }}(q godb.Queryer) (*{{ cameled $column.ForeignTable }}, porterr.IError) {
-        f := &{{ cameled $column.ForeignTable }} { {{ cameled $column.ForeignColumnName }}:m.{{ $column.ModelName }} }
+    {{ if $column.IsNullable }}if m.{{ $column.ModelName }} == nil {
+        return nil, porterr.New(porterr.PortErrorParam, "No foreign key for {{ cameled $column.ForeignTable }} ({{ $column.ModelName }}) specified, nothing for load").HTTP(http.StatusBadRequest)
+        }{{ end }}
+        f := &{{ cameled $column.ForeignTable }} { {{ cameled $column.ForeignColumnName }}:{{ if $column.IsNullable }}*{{ end }}m.{{ $column.ModelName }} }
         return f, f.Load(q)
     }
     {{ end }}

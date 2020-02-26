@@ -100,7 +100,11 @@ SELECT a.attname                                                                
        CASE WHEN a.attnotnull THEN FALSE ELSE TRUE END                                 AS is_nullable,
        s.nspname                                                                       AS schema,
        t.relname                                                                       AS table,
-       CASE WHEN max(i.indisprimary::int)::BOOLEAN THEN TRUE ELSE FALSE END            AS is_primary,
+       (SELECT EXISTS(SELECT i.indisprimary
+                      FROM pg_index i
+                      WHERE i.indrelid = a.attrelid
+                        AND a.attnum = ANY (i.indkey)
+                        AND i.indisprimary IS TRUE))                                   AS is_primary,
        ic.column_default,
        pg_get_serial_sequence(ic.table_schema || '.' || ic.table_name, ic.column_name) AS sequence,
        max(ccu.table_schema)                                                           AS foreign_schema,
@@ -111,13 +115,20 @@ SELECT a.attname                                                                
                       where column_name = 'deleted_at'
                         and table_name = max(ccu.table_name)))                         AS is_foreign_soft,
        col_description(t.oid, ic.ordinal_position)                                     AS description,
-       CASE WHEN(i.indisunique IS TRUE) THEN TRUE ELSE FALSE END                       AS has_unique_index,
-       ins.indexname                                                                   AS unique_index_name
+       (SELECT EXISTS(SELECT i.indisunique
+                      FROM pg_index i
+                      WHERE i.indrelid = a.attrelid
+                        AND i.indisunique IS TRUE
+                        AND a.attnum = ANY (i.indkey)))                                AS has_unique_index,
+       (SELECT ins.indexname
+        FROM pg_indexes ins
+                 JOIN pg_index i ON ins.indexdef = pg_get_indexdef(i.indexrelid)
+        WHERE i.indisunique IS TRUE
+          AND i.indrelid = a.attrelid
+          AND a.attnum = ANY (i.indkey))                                               AS unique_index_name
 FROM pg_attribute a
          JOIN pg_class t ON a.attrelid = t.oid
          JOIN pg_namespace s ON t.relnamespace = s.oid
-         LEFT JOIN pg_index i ON i.indrelid = a.attrelid AND a.attnum = ANY (i.indkey)
-         LEFT JOIN pg_indexes ins ON ins.indexdef = pg_get_indexdef(i.indexrelid)
          LEFT JOIN information_schema.columns AS ic
                    ON ic.column_name = a.attname AND ic.table_name = t.relname AND ic.table_schema = s.nspname
          LEFT JOIN information_schema.key_column_usage AS kcu
@@ -129,9 +140,8 @@ WHERE a.attnum > 0
   AND NOT a.attisdropped
   AND s.nspname = '%s'
   AND t.relname = '%s'
-GROUP BY a.attname, a.atttypid, a.atttypmod, a.attnotnull, s.nspname, t.relname, ic.column_default,
-         ic.table_schema, ic.table_name, ic.column_name, a.attnum, t.oid, ic.ordinal_position, i.indisunique,
-         i.indexrelid, ins.indexname
+GROUP BY a.attname, a.atttypid, a.attrelid, a.atttypmod, a.attnotnull, s.nspname, t.relname, ic.column_default,
+         ic.table_schema, ic.table_name, ic.column_name, a.attnum, t.oid, ic.ordinal_position
 ORDER BY a.attnum;`, schema, table)
 
 	rows, err := dbo.Query(query)
@@ -412,10 +422,12 @@ func MakeModel(db Queryer, path string, schema string, table string, templatePat
 				return err
 			}
 			if !found {
-				err = MakeModel(db, path, *c.ForeignSchema, *c.ForeignTable, templatePath, systemColumns)
-				if err != nil {
-					return err
-				}
+				go func() {
+					err = MakeModel(db, path, *c.ForeignSchema, *c.ForeignTable, templatePath, systemColumns)
+					if err != nil {
+						db.(*DBO).Logger.Printf("Model file created: %s", path)
+					}
+				}()
 			}
 		}
 	}
