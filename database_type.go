@@ -70,7 +70,7 @@ type Migration struct {
 	MigrationPath string
 	DBO           *DBO
 	Config        ConnectionConfig
-	Registry      *MigrationRegistry
+	Registry      MigrationRegistry
 	RegistryPath  string
 	RegistryXPath string
 }

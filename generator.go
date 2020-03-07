@@ -39,7 +39,7 @@ type Column struct {
 	ForeignIsSoft     bool    // DB foreign table is soft
 	Description       *string // DB column description
 	IsPrimaryKey      bool    // DB is primary key
-	Json              string  // Model Json name
+	Tags              string  // Model Tags name
 	Import            string  // Model Import custom lib
 	IsArray           bool    // Array column
 	IsCreated         bool    // Is created at column
@@ -169,7 +169,7 @@ ORDER BY a.attnum;`, schema, table)
 		}
 
 		column.ModelName = name
-		column.Json = fmt.Sprintf(`%cjson:"%s"%c`, '`', json, '`')
+		column.Tags = fmt.Sprintf(`%ccolumn:"%s"json:"%s"%c`, '`', column.Name, json, '`')
 
 		if column.Name == sysCols.Created {
 			column.IsCreated = true

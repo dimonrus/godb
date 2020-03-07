@@ -10,7 +10,7 @@ import (
 
 // Upgrade
 func (m *Migration) Upgrade(class string) error {
-	for _, migration := range (*m.Registry)[class] {
+	for _, migration := range m.Registry[class] {
 		tx, err := m.DBO.Begin()
 		if err != nil {
 			return err
@@ -50,7 +50,7 @@ func (m *Migration) Upgrade(class string) error {
 // Downgrade
 func (m *Migration) Downgrade(class string, version string) error {
 	var applyTime uint64
-	for _, migration := range (*m.Registry)[class] {
+	for _, migration := range m.Registry[class] {
 		if migration.GetVersion() != version {
 			continue
 		}
@@ -180,13 +180,11 @@ func (m {{ .MigrationTypeName }}) GetVersion () string {
 
 func (m {{ .MigrationTypeName }}) Up (tx *godb.SqlTx) error {
 	// write code here
-
 	return nil
 }
 
 func (m {{ .MigrationTypeName }}) Down (tx *godb.SqlTx) error {
 	// write code here
-
 	return nil
 }
 `))
