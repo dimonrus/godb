@@ -20,6 +20,11 @@ func (m *{{ .Model }}) Columns() []string {
     return []string{ {{ range $key, $column := .Columns }}{{ if $key }}, {{ end }}"{{ $column.Name }}"{{ end }} }
 }
 
+// Model column
+func (m *{{ .Model }}) Column(field interface{}) string {
+    return godb.ModelColumn(m, field)
+}
+
 // Model values
 func (m *{{ .Model }}) Values() (values []interface{}) {
     return append(values, {{ range $key, $column := .Columns }}{{ if $key }}, {{ end }}{{ if $column.IsArray }}pq.Array({{ end }}&m.{{ $column.ModelName }}{{ if $column.IsArray  }}){{ end }}{{ end }})
