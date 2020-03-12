@@ -32,7 +32,7 @@ func (m *{{ .Model }}) Values() (values []interface{}) {
 
 // SQL load Query
 func (m *{{ .Model }}) GetLoadQuery() string {
-    return "SELECT " + strings.Join(m.Columns(), ",") + " FROM {{ .Table }} WHERE {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }} AND {{ end }}{{ $index = inc $index }}{{ $column.Name }} = ${{ $index }}{{ end }}{{ end }};"
+    return "SELECT " + strings.Join(m.Columns(), ",") + " FROM "+m.Table()+" WHERE {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }} AND {{ end }}{{ $index = inc $index }}{{ $column.Name }} = ${{ $index }}{{ end }}{{ end }};"
 }
 
 // Load method
@@ -87,7 +87,7 @@ func (m *{{ .Model }}) Load(q godb.Queryer) porterr.IError {
 
     // SQL Soft delete Query
     func (m *{{ $.Model }}) GetSoftDeleteQuery() string {
-        return "UPDATE {{ $.Table }} SET {{ $column.Name }} = NOW() WHERE {{ $index = 0 }}{{ range $key, $col := $.Columns }}{{ if $col.IsPrimaryKey }}{{ if $index }} AND {{ end }}{{ $index = inc $index }}{{ $col.Name }} = ${{$index}}{{ end }}{{ end }} RETURNING {{ $column.Name }};"
+        return "UPDATE "+m.Table()+" SET {{ $column.Name }} = NOW() WHERE {{ $index = 0 }}{{ range $key, $col := $.Columns }}{{ if $col.IsPrimaryKey }}{{ if $index }} AND {{ end }}{{ $index = inc $index }}{{ $col.Name }} = ${{$index}}{{ end }}{{ end }} RETURNING {{ $column.Name }};"
     }
 
     // Soft Delete {{ $.Model }}
@@ -101,7 +101,7 @@ func (m *{{ .Model }}) Load(q godb.Queryer) porterr.IError {
 
     // SQL Soft recover Query
     func (m *{{ $.Model }}) GetSoftRecoverQuery() string {
-        return "UPDATE {{ $.Table }} SET {{ $column.Name }} = null WHERE {{ $index = 0 }}{{ range $key, $col := $.Columns }}{{ if $col.IsPrimaryKey }}{{ if $index }} AND {{ end }}{{ $index = inc $index }}{{ $col.Name }} = ${{$index}}{{ end }}{{ end }} RETURNING {{ $column.Name }};"
+        return "UPDATE "+m.Table()+" SET {{ $column.Name }} = null WHERE {{ $index = 0 }}{{ range $key, $col := $.Columns }}{{ if $col.IsPrimaryKey }}{{ if $index }} AND {{ end }}{{ $index = inc $index }}{{ $col.Name }} = ${{$index}}{{ end }}{{ end }} RETURNING {{ $column.Name }};"
     }
 
     // Soft Recover {{ $.Model }}
@@ -114,9 +114,14 @@ func (m *{{ .Model }}) Load(q godb.Queryer) porterr.IError {
     }
 {{ end }}{{ end }}
 
+// Model update query
+func (m *{{ .Model }}) GetUpdateQuery(condition *godb.Condition, fields ...interface{}) (query string, params []interface{}, e porterr.IError) {
+    return godb.ModelUpdateQuery(m, condition, fields...)
+}
+
 // SQL delete Query
 func (m *{{ .Model }}) GetDeleteQuery() string {
-    return "DELETE FROM {{ .Table }} WHERE {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }} AND {{ end }}{{ $index = inc $index }}{{ $column.Name }} = ${{$index}}{{ end }}{{ end }};"
+    return "DELETE FROM "+m.Table()+" WHERE {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }} AND {{ end }}{{ $index = inc $index }}{{ $column.Name }} = ${{$index}}{{ end }}{{ end }};"
 }
 
 // Delete method
@@ -130,7 +135,7 @@ func (m *{{ .Model }}) Delete(q godb.Queryer) porterr.IError {
 
 // SQL exists Query
 func (m *{{ .Model }}) GetExistsQuery() string {
-    return "SELECT EXISTS (SELECT 1 FROM {{ .Table }} WHERE {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }} AND {{ end }}{{ $index = inc $index }}{{ $column.Name }} = ${{$index}}{{ end }}{{ end }});"
+    return "SELECT EXISTS (SELECT 1 FROM "+m.Table()+" WHERE {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }} AND {{ end }}{{ $index = inc $index }}{{ $column.Name }} = ${{$index}}{{ end }}{{ end }});"
 }
 
 // Exists method
@@ -162,11 +167,11 @@ func (m *{{ .Model }}) IsExists(q godb.Queryer) (exists bool, e porterr.IError) 
     // SQL upsert Query
     func (m *{{ .Model }}) GetSaveQuery() string {
         if {{ $index := 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }} && {{ end }}{{ $index = inc $index }} m.{{ $column.ModelName }} != {{ if eq $column.ModelType "string" }}""{{ else }}0{{ end }}{{ end }}{{ end }} {
-            return `UPDATE {{ .Table }} SET {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ $index = inc $index }}{{ end }}{{ if not (system $column) }}{{ if $comma }}, {{ end }}{{ $index = inc $index }}{{ $column.Name }} = ${{ $index }}{{ $comma = 1 }}{{ end }}{{ end }}{{ range $key, $column := .Columns }}{{ if eq $column.Name "updated_at" }}, updated_at = NOW(){{ end }}{{ end }}
+            return `UPDATE `+m.Table()+` SET {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ $index = inc $index }}{{ end }}{{ if not (system $column) }}{{ if $comma }}, {{ end }}{{ $index = inc $index }}{{ $column.Name }} = ${{ $index }}{{ $comma = 1 }}{{ end }}{{ end }}{{ range $key, $column := .Columns }}{{ if eq $column.Name "updated_at" }}, updated_at = NOW(){{ end }}{{ end }}
             WHERE {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }} AND {{ end }}{{ $index = inc $index }}{{ $column.Name }} = ${{ $index }}{{ end }}{{ end }}
             {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if (system $column) }}{{ if eq $index 0 }}RETURNING {{ end }}{{ if $index }}, {{ end }}{{ $column.Name }}{{ $index = inc $index }}{{ end}}{{ end}};`
         }
-        return `INSERT INTO {{ .Table }} ({{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if not (system $column) }}{{ if $index }}, {{ end }}{{ $index = inc $index }}{{ $column.Name }}{{ end}}{{ end}}) VALUES ({{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if not (system $column) }}{{ if $index }}, {{ end }}{{ $index = inc $index }}${{ $index }}{{ end }}{{ end }})
+        return `INSERT INTO `+m.Table()+` ({{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if not (system $column) }}{{ if $index }}, {{ end }}{{ $index = inc $index }}{{ $column.Name }}{{ end}}{{ end}}) VALUES ({{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if not (system $column) }}{{ if $index }}, {{ end }}{{ $index = inc $index }}${{ $index }}{{ end }}{{ end }})
         {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if (system $column) }}{{ if eq $index 0 }}RETURNING {{ end }}{{ if $index }}, {{ end }}{{ $index = inc $index }}{{ $column.Name }}{{ end}}{{ end}};`
     }
 
@@ -183,7 +188,7 @@ func (m *{{ .Model }}) IsExists(q godb.Queryer) (exists bool, e porterr.IError) 
 
     // SQL Insert Update Query
     func (m *{{ .Model }}) GetSaveQuery() string {
-        return `INSERT INTO {{ .Table }} ({{ $index := 0 }}{{ range $key, $column := .Columns }}{{ if not (system $column) }}{{ if $index }}, {{ end }}{{ $column.Name }}{{ $index = inc $index }}{{ end}}{{ end}}) VALUES ({{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if not (system $column) }}{{ if $index }}, {{ end }}{{ $index = inc $index }}${{ $index }}{{ end }}{{ end }})
+        return `INSERT INTO `+m.Table()+` ({{ $index := 0 }}{{ range $key, $column := .Columns }}{{ if not (system $column) }}{{ if $index }}, {{ end }}{{ $column.Name }}{{ $index = inc $index }}{{ end}}{{ end}}) VALUES ({{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if not (system $column) }}{{ if $index }}, {{ end }}{{ $index = inc $index }}${{ $index }}{{ end }}{{ end }})
         ON CONFLICT ({{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }}, {{ end }}{{ $index = inc $index }}{{ $column.Name }}{{ end }}{{ end }}) DO UPDATE SET {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if not (system $column) }}{{ if $index }}, {{ end }}{{ $index = inc $index }}{{ $column.Name }} = ${{ $index }}{{ end }}{{ end }}{{ range $key, $column := .Columns }}{{ if eq $column.Name "updated_at" }}, updated_at = NOW(){{ end }}{{ end }}
         {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if (system $column) }}{{ if eq $index 0 }}RETURNING {{ end }}{{ if $index }}, {{ end }}{{ $column.Name }}{{ $index = inc $index }}{{ end }}{{ end }};`
     }
