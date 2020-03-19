@@ -2,7 +2,6 @@ package godb
 
 import (
 	"database/sql"
-	"github.com/dimonrus/porterr"
 )
 
 // Logger
@@ -73,22 +72,4 @@ type Migration struct {
 	Registry      MigrationRegistry
 	RegistryPath  string
 	RegistryXPath string
-}
-
-// DB model interface
-type IModel interface {
-	Table() string
-	Columns() []string
-	Values() []interface{}
-	Load(q Queryer) porterr.IError
-	Save(q Queryer) porterr.IError
-	Delete(q Queryer) porterr.IError
-}
-
-// DB model interface
-type ISoftModel interface {
-	IModel
-	SoftLoad(q Queryer) porterr.IError
-	SoftDelete(q Queryer) porterr.IError
-	SoftRecover(q Queryer) porterr.IError
 }

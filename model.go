@@ -6,6 +6,24 @@ import (
 	"strings"
 )
 
+// DB model interface
+type IModel interface {
+	Table() string
+	Columns() []string
+	Values() []interface{}
+	Load(q Queryer) porterr.IError
+	Save(q Queryer) porterr.IError
+	Delete(q Queryer) porterr.IError
+}
+
+// DB model interface
+type ISoftModel interface {
+	IModel
+	SoftLoad(q Queryer) porterr.IError
+	SoftDelete(q Queryer) porterr.IError
+	SoftRecover(q Queryer) porterr.IError
+}
+
 // Model column in db
 func ModelColumn(model IModel, field interface{}) string {
 	if model == nil {
@@ -55,11 +73,28 @@ func ModelUpdateQuery(model IModel, condition *Condition, fields ...interface{})
 	if len(columns) > 0 {
 		sql = "UPDATE " + model.Table() + " SET " + strings.Join(columns, ",")
 		if condition != nil && !condition.IsEmpty() {
-			sql += " WHERE " + condition.String()
+			sql += " WHERE " + condition.String() + ";"
 			params = append(params, condition.GetArguments()...)
+		} else {
+			sql += ";"
 		}
 	} else {
 		e = porterr.New(porterr.PortErrorArgument, "No columns found in model")
 	}
 	return sql, params, e
+}
+
+// Model delete query
+func ModelDeleteQuery(model IModel, condition *Condition) (sql string, e porterr.IError) {
+	if model == nil {
+		e = porterr.New(porterr.PortErrorArgument, "Model is nil, check your logic")
+		return
+	}
+	sql = "DELETE FROM " + model.Table()
+	if condition != nil && !condition.IsEmpty() {
+		sql += " WHERE " + condition.String() + ";"
+	} else {
+		sql += ";"
+	}
+	return sql, e
 }
