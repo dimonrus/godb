@@ -88,19 +88,9 @@ type TransactionPool map[TransactionId]*SqlTx
 
 // Transaction params
 type Transaction struct {
-	// Id of the transaction. Key in Transaction pool
-	Id TransactionId
 	// Time to live in unix timestampt
 	// 0 - no TTL for transaction
 	TTL int
 	// Event on transaction done
 	done chan bool
-	// When transaction was started
-	BeginTime time.Time
-	// When commit was performed
-	CommitTime time.Time
-	// When rollback was performed
-	RollbackTime time.Time
-	// Message for case when transaction failed
-	Message *string
 }

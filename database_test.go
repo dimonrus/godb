@@ -3,6 +3,7 @@ package godb
 import (
 	"database/sql"
 	"fmt"
+	"github.com/lib/pq"
 	_ "github.com/lib/pq"
 	"log"
 	"os"
@@ -27,13 +28,13 @@ func (c *wrongConnection) GetDbType() string {
 }
 func (c *connection) String() string {
 	return fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
-		"192.168.1.110", 5432, "godb", "godb", "godb")
+		"192.168.1.110", 5433, "godb", "godb", "godb")
 }
 func (c *connection) GetDbType() string {
 	return "postgres"
 }
 func (c *connection) GetMaxConnection() int {
-	return 50
+	return 200
 }
 func (c *connection) GetMaxIdleConns() int {
 	return 15

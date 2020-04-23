@@ -3,7 +3,6 @@ package godb
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -84,19 +83,19 @@ func (dbo *DBO) Prepare(query string) (*SqlStmt, error) {
 
 // Begin transaction
 func (dbo *DBO) Begin() (*SqlTx, error) {
-	transaction := &Transaction{
-		Id:        GenTransactionId(),
-		TTL:       int(dbo.Options.TransactionTTL),
-		BeginTime: time.Now(),
-		done:      make(chan bool),
-	}
 	tx, err := dbo.DB.BeginTx(context.Background(), nil)
-	stx := &SqlTx{Tx: tx, Options: dbo.Options, transaction: transaction}
+	stx := &SqlTx{
+		Tx:      tx,
+		Options: dbo.Options,
+		transaction: &Transaction{
+			TTL:  int(dbo.Options.TransactionTTL),
+			done: make(chan bool),
+		}}
 	stx.delayedRollback()
 	return stx, err
 }
 
-// Get Transaction id
+// Delayed rollback
 func (tx *SqlTx) delayedRollback() {
 	if tx.transaction != nil && tx.transaction.TTL > 0 {
 		go func() {
@@ -119,32 +118,10 @@ func (tx *SqlTx) delayedRollback() {
 	return
 }
 
-// Get Transaction id
-func (tx *SqlTx) GetId() TransactionId {
-	return tx.transaction.Id
-}
-
-// Get Transaction Information
-func (tx *SqlTx) String() string {
-	return fmt.Sprintf("Transaction: %+v", tx.transaction)
-}
-
-// Set Transaction id
-func (tx *SqlTx) SetId(id TransactionId) {
-	tx.transaction.Id = id
-	return
-}
-
 // Commit
 func (tx *SqlTx) commit() error {
-	tx.transaction.CommitTime = time.Now()
 	// Commit
-	err := tx.Tx.Commit()
-	if err != nil {
-		tx.transaction.Message = new(string)
-		*tx.transaction.Message = "Commit error: " + err.Error()
-	}
-	return err
+	return tx.Tx.Commit()
 }
 
 // Commit
@@ -156,14 +133,8 @@ func (tx *SqlTx) Commit() error {
 }
 
 func (tx *SqlTx) rollback() error {
-	tx.transaction.RollbackTime = time.Now()
 	// Rollback
-	err := tx.Tx.Rollback()
-	if err != nil {
-		tx.transaction.Message = new(string)
-		*tx.transaction.Message = "Rollback error: " + err.Error()
-	}
-	return err
+	return tx.Tx.Rollback()
 }
 
 // Rollback

@@ -2,7 +2,6 @@ package godb
 
 import (
 	"database/sql"
-	"fmt"
 	_ "github.com/lib/pq"
 	"sync"
 	"testing"
@@ -68,13 +67,11 @@ func TestAsyncTransaction(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	fmt.Print(tx.String())
 }
 
 func initNativePQ() (*sql.DB, error) {
-	cs := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
-			"192.168.1.110", 5433, "gasap", "gasap", "gasap")
-	dbo, err := sql.Open("postgres", cs)
+	conn := &connection{}
+	dbo, err := sql.Open(conn.GetDbType(), conn.String())
 	if err != nil {
 		return nil, err
 	}
@@ -84,13 +81,13 @@ func initNativePQ() (*sql.DB, error) {
 		return nil, err
 	}
 	// Set connection options
-	dbo.SetMaxIdleConns(15)
-	dbo.SetConnMaxLifetime(time.Second * 15)
-	dbo.SetMaxOpenConns(50)
+	dbo.SetMaxIdleConns(conn.GetMaxIdleConns())
+	dbo.SetConnMaxLifetime(time.Second * time.Duration(conn.GetConnMaxLifetime()))
+	dbo.SetMaxOpenConns(conn.GetMaxConnection())
 	return dbo, nil
 }
 
-//  18	 611418573 ns/op	    2159 B/op	      28 allocs/op
+//  BenchmarkNativePq-4   	      92	  11482190 ns/op	    1346 B/op	      20 allocs/op
 func BenchmarkNativePq(b *testing.B) {
 	db, err := initNativePQ()
 	if err != nil {
@@ -116,7 +113,7 @@ func BenchmarkNativePq(b *testing.B) {
 	}
 	b.ReportAllocs()
 }
-// 18	 622394080 ns/op	    8180 B/op	      38 allocs/op
+// BenchmarkTransaction-4   	      96	  12133164 ns/op	    1753 B/op	      26 allocs/op
 func BenchmarkTransaction(b *testing.B) {
 	db, err := initDb()
 	if err != nil {
