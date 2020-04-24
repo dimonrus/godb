@@ -2,6 +2,8 @@ package godb
 
 import (
 	"database/sql"
+	"sync"
+	"time"
 )
 
 // Logger
@@ -37,8 +39,9 @@ type IMigrationFile interface {
 
 // Database Object Options
 type Options struct {
-	Debug  bool
-	Logger Logger
+	Debug          bool
+	Logger         Logger
+	TransactionTTL time.Duration `yaml:"transactionTTL"`
 }
 
 // Main Database Object
@@ -50,12 +53,15 @@ type DBO struct {
 
 // Transaction
 type SqlTx struct {
+	m sync.Mutex
 	*sql.Tx
 	Options
+	transaction *Transaction
 }
 
 // Stmt
 type SqlStmt struct {
+	m sync.Mutex
 	*sql.Stmt
 	Options
 	query string
@@ -72,4 +78,19 @@ type Migration struct {
 	Registry      MigrationRegistry
 	RegistryPath  string
 	RegistryXPath string
+}
+
+// Transaction identifier
+type TransactionId string
+
+// Transaction pool
+type TransactionPool map[TransactionId]*SqlTx
+
+// Transaction params
+type Transaction struct {
+	// Time to live in unix timestampt
+	// 0 - no TTL for transaction
+	TTL int
+	// Event on transaction done
+	done chan bool
 }

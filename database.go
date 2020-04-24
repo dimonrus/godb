@@ -78,33 +78,96 @@ func (dbo *DBO) Prepare(query string) (*SqlStmt, error) {
 		query = preparePositionalArgsQuery(query)
 	}
 	stmt, err := dbo.DB.PrepareContext(context.Background(), query)
-
-	return &SqlStmt{stmt, dbo.Options, query}, err
+	return &SqlStmt{Stmt: stmt, Options: dbo.Options, query: query}, err
 }
 
 // Begin transaction
 func (dbo *DBO) Begin() (*SqlTx, error) {
 	tx, err := dbo.DB.BeginTx(context.Background(), nil)
-	return &SqlTx{tx, dbo.Options}, err
+	stx := &SqlTx{
+		Tx:      tx,
+		Options: dbo.Options,
+		transaction: &Transaction{
+			TTL:  int(dbo.Options.TransactionTTL),
+			done: make(chan bool),
+		}}
+	stx.delayedRollback()
+	return stx, err
+}
+
+// Delayed rollback
+func (tx *SqlTx) delayedRollback() {
+	if tx.transaction != nil && tx.transaction.TTL > 0 {
+		go func() {
+			timer := time.After(time.Duration(tx.transaction.TTL) * time.Second)
+			for {
+				select {
+				case <-tx.transaction.done:
+					close(tx.transaction.done)
+					return
+				case <-timer:
+					err := tx.rollback()
+					if err != nil {
+						tx.Logger.Println(err)
+					}
+					return
+				}
+			}
+		}()
+	}
+	return
+}
+
+// Commit
+func (tx *SqlTx) commit() error {
+	// Commit
+	return tx.Tx.Commit()
+}
+
+// Commit
+func (tx *SqlTx) Commit() error {
+	// Stop timer
+	tx.transaction.done <- true
+	// Commit
+	return tx.commit()
+}
+
+func (tx *SqlTx) rollback() error {
+	// Rollback
+	return tx.Tx.Rollback()
+}
+
+// Rollback
+func (tx *SqlTx) Rollback() error {
+	// Stop timer
+	tx.transaction.done <- true
+	// rollback
+	return tx.rollback()
 }
 
 // Prepare Stmt
 func (tx *SqlTx) Prepare(query string) (*SqlStmt, error) {
+	tx.m.Lock()
+	defer tx.m.Unlock()
 	if strings.Contains(query, "?") {
 		query = preparePositionalArgsQuery(query)
 	}
 	stmt, err := tx.PrepareContext(context.Background(), query)
-	return &SqlStmt{stmt, tx.Options, query}, err
+	return &SqlStmt{Stmt: stmt, Options: tx.Options, query: query}, err
 }
 
 // Get Stmt
 func (tx *SqlTx) Stmt(stmt *SqlStmt) *SqlStmt {
+	tx.m.Lock()
+	defer tx.m.Unlock()
 	stm := tx.StmtContext(context.Background(), stmt.Stmt)
-	return &SqlStmt{stm, tx.Options, stmt.query}
+	return &SqlStmt{Stmt: stm, Options: tx.Options, query: stmt.query}
 }
 
 // Exec Transaction
 func (tx *SqlTx) Exec(query string, args ...interface{}) (sql.Result, error) {
+	tx.m.Lock()
+	defer tx.m.Unlock()
 	if strings.Contains(query, "?") {
 		query = preparePositionalArgsQuery(query)
 	}
@@ -116,6 +179,8 @@ func (tx *SqlTx) Exec(query string, args ...interface{}) (sql.Result, error) {
 
 // Query Transaction
 func (tx *SqlTx) Query(query string, args ...interface{}) (*sql.Rows, error) {
+	tx.m.Lock()
+	defer tx.m.Unlock()
 	if strings.Contains(query, "?") {
 		query = preparePositionalArgsQuery(query)
 	}
@@ -127,6 +192,8 @@ func (tx *SqlTx) Query(query string, args ...interface{}) (*sql.Rows, error) {
 
 // Query Row Transaction
 func (tx *SqlTx) QueryRow(query string, args ...interface{}) *sql.Row {
+	tx.m.Lock()
+	defer tx.m.Unlock()
 	if strings.Contains(query, "?") {
 		query = preparePositionalArgsQuery(query)
 	}
@@ -138,18 +205,21 @@ func (tx *SqlTx) QueryRow(query string, args ...interface{}) *sql.Row {
 
 // Stmt Exec
 func (st *SqlStmt) Exec(args ...interface{}) (sql.Result, error) {
+	st.m.Lock()
+	defer st.m.Unlock()
 	if strings.Contains(st.query, "?") {
 		st.query = preparePositionalArgsQuery(st.query)
 	}
 	if st.Debug == true {
 		go logDbQuery(st.Logger, st.query, args...)
 	}
-
 	return st.Stmt.ExecContext(context.Background(), args...)
 }
 
 // Stmt Query
 func (st *SqlStmt) Query(args ...interface{}) (*sql.Rows, error) {
+	st.m.Lock()
+	defer st.m.Unlock()
 	if strings.Contains(st.query, "?") {
 		st.query = preparePositionalArgsQuery(st.query)
 	}
@@ -161,6 +231,8 @@ func (st *SqlStmt) Query(args ...interface{}) (*sql.Rows, error) {
 
 // Stmt Query Row
 func (st *SqlStmt) QueryRow(args ...interface{}) *sql.Row {
+	st.m.Lock()
+	defer st.m.Unlock()
 	if strings.Contains(st.query, "?") {
 		st.query = preparePositionalArgsQuery(st.query)
 	}

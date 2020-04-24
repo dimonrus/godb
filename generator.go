@@ -114,7 +114,7 @@ SELECT a.attname                                                                
                       from information_schema.columns
                       where column_name = 'deleted_at'
                         and table_name = max(ccu.table_name)))                         AS is_foreign_soft,
-       col_description(t.oid, ic.ordinal_position)                                     AS description,
+       col_description(t.oid, a.attnum)                                                AS description,
        (SELECT EXISTS(SELECT i.indisunique
                       FROM pg_index i
                       WHERE i.indrelid = a.attrelid
