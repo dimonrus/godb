@@ -89,7 +89,6 @@ func (dbo *DBO) Begin() (*SqlTx, error) {
 		Options: dbo.Options,
 		transaction: &Transaction{
 			TTL:  int(dbo.Options.TransactionTTL),
-			done: make(chan bool),
 		}}
 	stx.delayedRollback()
 	return stx, err
@@ -100,6 +99,7 @@ func (tx *SqlTx) delayedRollback() {
 	if tx.transaction != nil && tx.transaction.TTL > 0 {
 		go func() {
 			timer := time.After(time.Duration(tx.transaction.TTL) * time.Second)
+			tx.transaction.done = make(chan bool)
 			for {
 				select {
 				case <-tx.transaction.done:
@@ -127,7 +127,9 @@ func (tx *SqlTx) commit() error {
 // Commit
 func (tx *SqlTx) Commit() error {
 	// Stop timer
-	tx.transaction.done <- true
+	if tx.transaction.done != nil {
+		tx.transaction.done <- true
+	}
 	// Commit
 	return tx.commit()
 }
@@ -140,7 +142,9 @@ func (tx *SqlTx) rollback() error {
 // Rollback
 func (tx *SqlTx) Rollback() error {
 	// Stop timer
-	tx.transaction.done <- true
+	if tx.transaction.done != nil {
+		tx.transaction.done <- true
+	}
 	// rollback
 	return tx.rollback()
 }
