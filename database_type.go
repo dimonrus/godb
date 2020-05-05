@@ -84,7 +84,10 @@ type Migration struct {
 type TransactionId string
 
 // Transaction pool
-type TransactionPool map[TransactionId]*SqlTx
+type TransactionPool struct {
+	transactions map[TransactionId]*SqlTx
+	m sync.RWMutex
+}
 
 // Transaction params
 type Transaction struct {

@@ -113,6 +113,7 @@ func BenchmarkNativePq(b *testing.B) {
 	}
 	b.ReportAllocs()
 }
+
 // BenchmarkTransaction-4   	      96	  12133164 ns/op	    1753 B/op	      26 allocs/op
 func BenchmarkTransaction(b *testing.B) {
 	db, err := initDb()
@@ -140,4 +141,46 @@ func BenchmarkTransaction(b *testing.B) {
 		}
 	}
 	b.ReportAllocs()
+}
+
+func TestTransactionPool(t *testing.T) {
+	pool := NewTransactionPool()
+	db, err := initDb()
+	if err != nil {
+		t.Fatal(err)
+	}
+	db.TransactionTTL = 3
+	tx, err := db.Begin()
+	if err != nil {
+		t.Fatal(err)
+	}
+	tx1 := GenTransactionId()
+	pool.Set(tx1, tx)
+	tx, err = db.Begin()
+	if err != nil {
+		t.Fatal(err)
+	}
+	tx2 := GenTransactionId()
+	pool.Set(tx2, tx)
+
+	if pool.Count() != 2 {
+		t.Fatal("pool have to contain 2 transaction")
+	}
+
+	time.Sleep(time.Second * 4)
+
+	tx = pool.Get(tx2)
+	if tx != nil {
+		_ ,err = tx.Exec("select version();")
+		if err == sql.ErrTxDone {
+			pool.UnSet(tx2)
+		} else {
+			t.Fatal(err)
+		}
+	}
+
+	time.Sleep(time.Second * 3)
+	if pool.Count() != 1 {
+		t.Fatal("pool have to contain 1 transaction")
+	}
 }
