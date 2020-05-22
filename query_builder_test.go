@@ -31,3 +31,22 @@ func TestQB_String(t *testing.T) {
 
 	fmt.Println(qb.String())
 }
+
+func TestQB_Union(t *testing.T) {
+	q := NewQB()
+	q.Columns("*")
+	q.From("some_table")
+
+	u1 := NewQB()
+	u1.Columns("*")
+	u1.From("some_table_union_1")
+
+	u2 := NewQB()
+	u2.Columns("*")
+	u2.From("some_table_union_2")
+
+	q.Union(u1)
+	q.Union(u2)
+
+	fmt.Println(q.String())
+}

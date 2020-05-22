@@ -14,6 +14,7 @@ type QB struct {
 	where      Condition
 	orders     []string
 	group      []string
+	union      []*QB
 	having     Condition
 	pagination sqlPagination
 }
@@ -29,6 +30,20 @@ func (f *QB) With(name string, qb *QB) *QB {
 // Reset With
 func (f *QB) ResetWith() *QB {
 	f.with = make(map[string]*QB)
+	return f
+}
+
+// Union
+func (f *QB) Union(qb *QB) *QB {
+	if qb != nil {
+		f.union = append(f.union, qb)
+	}
+	return f
+}
+
+// Reset Union
+func (f *QB) ResetUnion() *QB {
+	f.union = make([]*QB, 0)
 	return f
 }
 
@@ -140,13 +155,22 @@ func (f *QB) GetArguments() []interface{} {
 			arguments = append(arguments, w.GetArguments()...)
 		}
 	}
-	return append(arguments, append(f.where.GetArguments(), f.having.GetArguments()...)...)
+
+	arguments = append(arguments, append(f.where.GetArguments(), f.having.GetArguments()...)...)
+
+	if len(f.union) > 0 {
+		for _, u := range f.union {
+			arguments = append(arguments, u.GetArguments()...)
+		}
+	}
+	return arguments
 }
 
 // Make SQL query
 func (f QB) String() string {
 	var result = make([]string, 0)
 	var with = make([]string, 0)
+	var union = make([]string, 0)
 
 	// With render
 	if len(f.with) > 0 {
@@ -194,6 +218,14 @@ func (f QB) String() string {
 	// Prepare pagination
 	if f.pagination.Limit > 0 {
 		result = append(result, fmt.Sprintf("LIMIT %v OFFSET %v", f.pagination.Limit, f.pagination.Offset))
+	}
+
+	// Union render
+	if len(f.union) > 0 {
+		for _, u := range f.union {
+			union = append(union, u.String())
+		}
+		result = append(result, "UNION "+strings.Join(union, " UNION "))
 	}
 
 	return strings.Join(result, " ")
