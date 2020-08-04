@@ -1,6 +1,6 @@
-github.com/dimonrus/gohelp v0.3.0 h1:G+BMO4hlzr+wdfVBnVbknXfgcDkz75AZGpbfbeS6Q34=
-github.com/dimonrus/gohelp v0.3.0/go.mod h1:+dOOHmnzKauApxlx1kn/sHAYds3gPvMvXLpeLtBq82E=
+github.com/dimonrus/gohelp v0.4.0 h1:4EPgmMGuGfddFP0YK/D67B1RH362aHBOHCmj7r1PTSU=
+github.com/dimonrus/gohelp v0.4.0/go.mod h1:+dOOHmnzKauApxlx1kn/sHAYds3gPvMvXLpeLtBq82E=
 github.com/dimonrus/porterr v1.7.0 h1:3BUcnauukI1aKRIRR73MmL7hIE1TkmsJmWarvKJBaU4=
 github.com/dimonrus/porterr v1.7.0/go.mod h1:BCVpaUyYdawPPzeAa8yjCYvemctND1I9ER/nFnOyDgQ=
-github.com/lib/pq v1.4.0 h1:TmtCFbH+Aw0AixwyttznSMQDgbR5Yed/Gg6S8Funrhc=
-github.com/lib/pq v1.4.0/go.mod h1:5WUZQaWbwv1U+lTReE5YruASi9Al49XbQIvNi/34Woo=
+github.com/lib/pq v1.8.0 h1:9xohqzkUwzR4Ga4ivdTcawVS89YSDVxXMa3xJX3cGzg=
+github.com/lib/pq v1.8.0/go.mod h1:AlVN5x4E4T544tWzH6hKfbfQvm3HdbOxrmggDNAPY9o=
