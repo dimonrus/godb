@@ -79,6 +79,17 @@ func BenchmarkModelInsertQuery(b *testing.B) {
 	b.ReportAllocs()
 }
 
+func TestModelValues(t *testing.T) {
+	m := &TestModel{
+		Id:        10,
+		Name:      "scdscs",
+		SomeInt:   12123,
+		CreatedAt: time.Now(),
+	}
+	vals := ModelValues(m, "id", "some_int")
+	fmt.Println(vals)
+}
+
 func TestModelColumn(t *testing.T) {
 	m := &TestModel{
 		Id:   0,

@@ -1,6 +1,7 @@
 package godb
 
 import (
+	"github.com/dimonrus/gohelp"
 	"github.com/dimonrus/porterr"
 	"reflect"
 	"strings"
@@ -41,6 +42,21 @@ func ModelColumn(model IModel, field interface{}) string {
 		}
 	}
 	return ""
+}
+
+// Model values by columns
+func ModelValues(model IModel, columns ...string) (values []interface{}) {
+	if model == nil {
+		return nil
+	}
+	ve := reflect.ValueOf(model).Elem()
+	te := reflect.TypeOf(model).Elem()
+	for i := 0; i < ve.NumField(); i++ {
+		if gohelp.ExistsInArrayString(te.Field(i).Tag.Get("column"), columns) {
+			values = append(values, ve.Field(i).Interface())
+		}
+	}
+	return
 }
 
 // Model update query
