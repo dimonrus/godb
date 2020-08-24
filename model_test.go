@@ -12,6 +12,7 @@ type TestModel struct {
 	Name      string    `json:"name" column:"name"`
 	SomeInt      int    `json:"someInt" column:"some_int"`
 	CreatedAt time.Time `json:"createdAt" column:"created_at"`
+	notAField string
 }
 
 // Model table name
