@@ -169,8 +169,11 @@ ORDER BY a.attnum;`, schema, table)
 		}
 
 		column.ModelName = name
-		column.Tags = fmt.Sprintf(`%ccolumn:"%s"json:"%s"%c`, '`', column.Name, json, '`')
-
+		if column.Sequence != nil {
+			column.Tags = fmt.Sprintf(`%ccolumn:"%s" seq:"true" json:"%s"%c`, '`', column.Name, json, '`')
+		} else {
+			column.Tags = fmt.Sprintf(`%ccolumn:"%s" json:"%s"%c`, '`', column.Name, json, '`')
+		}
 		if column.Name == sysCols.Created {
 			column.IsCreated = true
 		}

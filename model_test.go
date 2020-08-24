@@ -8,9 +8,10 @@ import (
 )
 
 type TestModel struct {
-	Id        int       `json:"id"column:"id"`
-	Name      string    `json:"name"column:"name"`
-	CreatedAt time.Time `json:"createdAt"column:"created_at"`
+	Id        int       `json:"id" seq:"true" column:"id"`
+	Name      string    `json:"name" column:"name"`
+	SomeInt      int    `json:"someInt" column:"some_int"`
+	CreatedAt time.Time `json:"createdAt" column:"created_at"`
 }
 
 // Model table name
@@ -52,6 +53,32 @@ func TestModelDeleteQuery(t *testing.T) {
 	}
 }
 
+func TestModelInsertQuery(t *testing.T) {
+	m := &TestModel{}
+	q, cols, e := ModelInsertQuery(m)
+	if e != nil {
+		t.Fatal(e)
+	}
+	t.Log(q, cols)
+
+	q, cols, e = ModelInsertQuery(m, &m.Name, &m.SomeInt)
+	if e != nil {
+		t.Fatal(e)
+	}
+	t.Log(q, cols)
+}
+
+func BenchmarkModelInsertQuery(b *testing.B) {
+	m := &TestModel{}
+	for i := 0; i < b.N; i++ {
+		_, _, e := ModelInsertQuery(m)
+		if e != nil {
+			b.Fatal(e)
+		}
+	}
+	b.ReportAllocs()
+}
+
 func TestModelColumn(t *testing.T) {
 	m := &TestModel{
 		Id:   0,
@@ -65,4 +92,14 @@ func TestModelColumn(t *testing.T) {
 	}
 
 	fmt.Print(q)
+}
+
+func BenchmarkTestModel(b *testing.B) {
+	var c = make([]TestModel, b.N)
+	//var m = &TestModel{}
+	for i := 0; i < b.N; i++ {
+		c[i].Id = i
+	}
+	fmt.Println(len(c), c[len(c)-1].Id)
+	b.ReportAllocs()
 }

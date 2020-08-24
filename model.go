@@ -98,3 +98,39 @@ func ModelDeleteQuery(model IModel, condition *Condition) (sql string, e porterr
 	}
 	return sql, e
 }
+
+// Model insert query
+func ModelInsertQuery(model IModel, fields ...interface{}) (sql string, columns []string, e porterr.IError) {
+	if model == nil {
+		e = porterr.New(porterr.PortErrorArgument, "Model is nil, check your logic")
+		return
+	}
+	ve := reflect.ValueOf(model).Elem()
+	te := reflect.TypeOf(model).Elem()
+	for i := 0; i < ve.NumField(); i++ {
+		if len(fields) > 0 {
+			for _, v := range fields {
+				cte := reflect.ValueOf(v)
+				if cte.Kind() != reflect.Ptr {
+					e = porterr.New(porterr.PortErrorArgument, "Fields must be an interfaces")
+					return
+				}
+				if ve.Field(i).Addr().Pointer() == cte.Elem().Addr().Pointer() {
+					if te.Field(i).Tag.Get("seq") != "true" {
+						columns = append(columns, te.Field(i).Tag.Get("column"))
+					}
+				}
+			}
+		} else {
+			if te.Field(i).Tag.Get("seq") != "true" {
+				columns = append(columns, te.Field(i).Tag.Get("column"))
+			}
+		}
+	}
+	if len(columns) > 0 {
+		sql = "INSERT INTO " + model.Table() + " (" + strings.Join(columns, ",") + ") "
+	} else {
+		e = porterr.New(porterr.PortErrorArgument, "No columns found in model")
+	}
+	return sql, columns, e
+}
