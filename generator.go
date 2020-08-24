@@ -169,11 +169,11 @@ ORDER BY a.attnum;`, schema, table)
 		}
 
 		column.ModelName = name
+		seq := "-"
 		if column.Sequence != nil {
-			column.Tags = fmt.Sprintf(`%ccolumn:"%s" seq:"true" json:"%s"%c`, '`', column.Name, json, '`')
-		} else {
-			column.Tags = fmt.Sprintf(`%ccolumn:"%s" json:"%s"%c`, '`', column.Name, json, '`')
+			seq = "+"
 		}
+		column.Tags = fmt.Sprintf(`%ccolumn:"%s" sequence:"%s" json:"%s"%c`, '`', column.Name, seq, json, '`')
 		if column.Name == sysCols.Created {
 			column.IsCreated = true
 		}

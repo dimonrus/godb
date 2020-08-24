@@ -138,8 +138,7 @@ func ModelInsertQuery(model IModel, fields ...interface{}) (sql string, columns 
 				}
 			}
 		} else {
-
-			if te.Field(i).Tag.Get("seq") != "true" && ve.Field(i).CanSet() {
+			if te.Field(i).Tag.Get("sequence") == "-" && ve.Field(i).CanSet() {
 				columns = append(columns, te.Field(i).Tag.Get("column"))
 			}
 		}

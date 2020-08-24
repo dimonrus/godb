@@ -7,12 +7,16 @@ import (
 	"time"
 )
 
+type ModelIntegration struct{
+	schema string
+}
+
 type TestModel struct {
-	Id        int       `json:"id" seq:"true" column:"id"`
-	Name      string    `json:"name" column:"name"`
-	SomeInt      int    `json:"someInt" column:"some_int"`
-	CreatedAt time.Time `json:"createdAt" column:"created_at"`
-	notAField string
+	Id        int       `json:"id" sequence:"+" column:"id"`
+	Name      string    `json:"name" sequence:"-" column:"name"`
+	SomeInt      int    `json:"someInt" sequence:"-" column:"some_int"`
+	CreatedAt time.Time `json:"createdAt" sequence:"-" column:"created_at"`
+	ModelIntegration
 }
 
 // Model table name
