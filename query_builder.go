@@ -3,24 +3,21 @@ package godb
 import (
 	"fmt"
 	"strings"
-	"sync"
 )
 
 // With SQL
 type sqlWith struct {
 	keys    map[int]string
 	queries []*QB
-	m       sync.RWMutex
 }
 
 // Len of with queries
 func (w *sqlWith) Len() int {
-	w.m.RLock()
-	defer w.m.RUnlock()
 	return len(w.keys)
 }
 
 // Query Builder struct
+// Not Thread safety
 type QB struct {
 	with       sqlWith
 	columns    []string
@@ -37,8 +34,6 @@ type QB struct {
 // Add With
 func (f *QB) With(name string, qb *QB) *QB {
 	if name != "" {
-		f.with.m.Lock()
-		defer f.with.m.Unlock()
 		f.with.queries = append(f.with.queries, qb)
 		f.with.keys[len(f.with.queries)-1] = name
 	}
@@ -47,8 +42,6 @@ func (f *QB) With(name string, qb *QB) *QB {
 
 // Reset With
 func (f *QB) ResetWith() *QB {
-	f.with.m.Lock()
-	defer f.with.m.Unlock()
 	f.with.queries = make([]*QB, 0)
 	f.with.keys = make(map[int]string, 0)
 	return f
@@ -70,8 +63,6 @@ func (f *QB) ResetUnion() *QB {
 
 // Get With
 func (f *QB) GetWith(name string) *QB {
-	f.with.m.RLock()
-	defer f.with.m.RUnlock()
 	for i, key := range f.with.keys {
 		if key == name {
 			return f.with.queries[i]
