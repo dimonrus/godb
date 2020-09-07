@@ -3,11 +3,26 @@ package godb
 import (
 	"fmt"
 	"strings"
+	"sync"
 )
+
+// With SQL
+type sqlWith struct {
+	keys    map[int]string
+	queries []*QB
+	m       sync.RWMutex
+}
+
+// Len of with queries
+func (w *sqlWith) Len() int {
+	w.m.RLock()
+	defer w.m.RUnlock()
+	return len(w.keys)
+}
 
 // Query Builder struct
 type QB struct {
-	with       map[string]*QB
+	with       sqlWith
 	columns    []string
 	from       []string
 	join       []string
@@ -22,14 +37,20 @@ type QB struct {
 // Add With
 func (f *QB) With(name string, qb *QB) *QB {
 	if name != "" {
-		f.with[name] = qb
+		f.with.m.Lock()
+		defer f.with.m.Unlock()
+		f.with.queries = append(f.with.queries, qb)
+		f.with.keys[len(f.with.queries)-1] = name
 	}
 	return f
 }
 
 // Reset With
 func (f *QB) ResetWith() *QB {
-	f.with = make(map[string]*QB)
+	f.with.m.Lock()
+	defer f.with.m.Unlock()
+	f.with.queries = make([]*QB, 0)
+	f.with.keys = make(map[int]string, 0)
 	return f
 }
 
@@ -49,8 +70,12 @@ func (f *QB) ResetUnion() *QB {
 
 // Get With
 func (f *QB) GetWith(name string) *QB {
-	if v, ok := f.with[name]; ok {
-		return v
+	f.with.m.RLock()
+	defer f.with.m.RUnlock()
+	for i, key := range f.with.keys {
+		if key == name {
+			return f.with.queries[i]
+		}
 	}
 	return nil
 }
@@ -150,8 +175,8 @@ func (f *QB) SetPagination(limit int, offset int) *QB {
 // Get arguments
 func (f *QB) GetArguments() []interface{} {
 	arguments := make([]interface{}, 0)
-	if len(f.with) > 0 {
-		for _, w := range f.with {
+	if f.with.Len() > 0 {
+		for _, w := range f.with.queries {
 			arguments = append(arguments, w.GetArguments()...)
 		}
 	}
@@ -167,15 +192,15 @@ func (f *QB) GetArguments() []interface{} {
 }
 
 // Make SQL query
-func (f QB) String() string {
+func (f *QB) String() string {
 	var result = make([]string, 0)
 	var with = make([]string, 0)
 	var union = make([]string, 0)
 
 	// With render
-	if len(f.with) > 0 {
-		for name, w := range f.with {
-			with = append(with, name+" AS ("+w.String()+")")
+	if f.with.Len() > 0 {
+		for index, w := range f.with.queries {
+			with = append(with, f.with.keys[index]+" AS ("+w.String()+")")
 		}
 		result = append(result, "WITH "+strings.Join(with, ", "))
 	}
@@ -234,7 +259,10 @@ func (f QB) String() string {
 // New Query Builder
 func NewQB() *QB {
 	return &QB{
-		with:   make(map[string]*QB),
+		with: sqlWith{
+			keys:    make(map[int]string),
+			queries: make([]*QB, 0),
+		},
 		where:  Condition{operator: ConditionOperatorAnd},
 		having: Condition{operator: ConditionOperatorAnd},
 	}
