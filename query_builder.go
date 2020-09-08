@@ -195,6 +195,12 @@ func (f *QB) GetArguments() []interface{} {
 			arguments = append(arguments, u.GetArguments()...)
 		}
 	}
+
+	if len(f.intersect) > 0 {
+		for _, i := range f.intersect {
+			arguments = append(arguments, i.GetArguments()...)
+		}
+	}
 	return arguments
 }
 
