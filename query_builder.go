@@ -27,8 +27,10 @@ type QB struct {
 	orders     []string
 	group      []string
 	union      []*QB
+	intersect  []*QB
 	having     Condition
 	pagination sqlPagination
+	SubQuery   bool
 }
 
 // Add With
@@ -52,6 +54,20 @@ func (f *QB) Union(qb *QB) *QB {
 	if qb != nil {
 		f.union = append(f.union, qb)
 	}
+	return f
+}
+
+// Intersect
+func (f *QB) Intersect(qb *QB) *QB {
+	if qb != nil {
+		f.intersect = append(f.intersect, qb)
+	}
+	return f
+}
+
+// Reset Intersect
+func (f *QB) ResetIntersect() *QB {
+	f.intersect = make([]*QB, 0)
 	return f
 }
 
@@ -187,6 +203,7 @@ func (f *QB) String() string {
 	var result = make([]string, 0)
 	var with = make([]string, 0)
 	var union = make([]string, 0)
+	var intersect = make([]string, 0)
 
 	// With render
 	if f.with.Len() > 0 {
@@ -242,6 +259,19 @@ func (f *QB) String() string {
 			union = append(union, u.String())
 		}
 		result = append(result, "UNION "+strings.Join(union, " UNION "))
+	}
+
+	// Intersect render
+	if len(f.intersect) > 0 {
+		for _, i := range f.intersect {
+			intersect = append(intersect, i.String())
+		}
+		result = append(result, "INTERSECT "+strings.Join(intersect, " INTERSECT "))
+	}
+
+	// Check if the query is for sub query
+	if f.SubQuery {
+		return "(" + strings.Join(result, " ") + ")"
 	}
 
 	return strings.Join(result, " ")

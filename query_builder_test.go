@@ -50,3 +50,28 @@ func TestQB_Union(t *testing.T) {
 
 	fmt.Println(q.String())
 }
+
+func TestQB_Intersect(t *testing.T) {
+	m :=  NewQB()
+	m.Columns("*")
+	m.From("main_table")
+
+	q := NewQB()
+	q.Columns("*")
+	q.From("some_table")
+
+	u1 := NewQB()
+	u1.Columns("*")
+	u1.From("some_table_union_1")
+
+	u2 := NewQB()
+	u2.Columns("*")
+	u2.From("some_table_union_2")
+
+	u1.Intersect(u2)
+	u1.SubQuery = true
+	q.Union(u1)
+
+	m.With("some", q)
+	fmt.Println(m.String())
+}
