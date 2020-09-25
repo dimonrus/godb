@@ -28,6 +28,7 @@ type Column struct {
 	ModelName         string  // Model name
 	Default           *string // DB default value
 	IsNullable        bool    // DB is nullable
+	IsByteArray       bool    // Do not need type pointer for []byte
 	DataType          string  // DB column type
 	ModelType         string  // Model type
 	Schema            string  // DB Schema
@@ -200,7 +201,7 @@ ORDER BY a.attnum;`, schema, table)
 		case column.DataType == "json":
 			column.ModelType = "json.RawMessage"
 			column.Import = `"encoding/json"`
-			column.IsNullable = false
+			column.IsByteArray = true
 		case column.DataType == "smallint":
 			column.ModelType = "int16"
 		case column.DataType == "date":
@@ -215,7 +216,7 @@ ORDER BY a.attnum;`, schema, table)
 		case column.DataType == "jsonb":
 			column.ModelType = "json.RawMessage"
 			column.Import = `"encoding/json"`
-			column.IsNullable = false
+			column.IsByteArray = true
 		case column.DataType == "uuid[]":
 			column.ModelType = "[]string"
 			column.IsArray = true
@@ -239,7 +240,7 @@ ORDER BY a.attnum;`, schema, table)
 			return nil, errors.New(fmt.Sprintf("unknown column type: %s", column.DataType))
 		}
 
-		if column.IsNullable && !column.IsArray {
+		if column.IsNullable && !column.IsArray && !column.IsByteArray {
 			column.ModelType = "*" + column.ModelType
 		}
 
@@ -321,7 +322,7 @@ func getHelperFunc(systemColumns SystemColumns) template.FuncMap {
 		},
 		"pointerType": func(modelType string) string {
 			if modelType[0] != '*' {
-				return "*"+modelType
+				return "*" + modelType
 			}
 			return modelType
 		},
