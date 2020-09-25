@@ -69,7 +69,7 @@ func (m *{{ .Model }}) Load(q godb.Queryer) porterr.IError {
     {{ if $column.IsNullable }}if m.{{ $column.ModelName }} == nil {
             return nil, porterr.New(porterr.PortErrorParam, "No foreign key for {{ cameled $column.ForeignTable }} ({{ $column.ModelName }}) specified, nothing for load").HTTP(http.StatusBadRequest)
         }{{ end }}
-        f := &{{ cameled $column.ForeignTable }} { {{ cameled $column.ForeignColumnName }}: *m.{{ $column.ModelName }} }
+        f := &{{ cameled $column.ForeignTable }} { {{ cameled $column.ForeignColumnName }}: m.{{ $column.ModelName }} }
         return f, f.SoftLoad(q)
     }
     {{ else }}
@@ -78,7 +78,7 @@ func (m *{{ .Model }}) Load(q godb.Queryer) porterr.IError {
     {{ if $column.IsNullable }}if m.{{ $column.ModelName }} == nil {
         return nil, porterr.New(porterr.PortErrorParam, "No foreign key for {{ cameled $column.ForeignTable }} ({{ $column.ModelName }}) specified, nothing for load").HTTP(http.StatusBadRequest)
         }{{ end }}
-        f := &{{ cameled $column.ForeignTable }} { {{ cameled $column.ForeignColumnName }}:*m.{{ $column.ModelName }} }
+        f := &{{ cameled $column.ForeignTable }} { {{ cameled $column.ForeignColumnName }}:m.{{ $column.ModelName }} }
         return f, f.Load(q)
     }
     {{ end }}
