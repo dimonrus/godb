@@ -38,7 +38,7 @@ func (m *{{ .Model }}) Column(field interface{}) string {
 
 // Model values
 func (m *{{ .Model }}) Values() []interface{} {
-    return []interface{}{ {{ range $key, $column := .Columns }}{{ if $key }}, {{ end }}{{ if $column.IsArray }}pq.Array({{ end }}&m.{{ $column.ModelName }}{{ if $column.IsArray  }}){{ end }}{{ end }})}
+    return []interface{}{ {{ range $key, $column := .Columns }}{{ if $key }}, {{ end }}{{ if $column.IsArray }}pq.Array({{ end }}&m.{{ $column.ModelName }}{{ if $column.IsArray  }}){{ end }}{{ end }} }
 }
 
 // SQL load Query
