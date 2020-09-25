@@ -16,8 +16,7 @@ func New{{ .Model }}() *{{ .Model }} {
 }
 
 // Model set primary keys
-func (m *{{ .Model }}) SetPrimary({{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }}, {{ end }}{{ $index = inc $index }} {{ icameled $column.ModelName }} {{ $column.ModelType }} {{ end }}{{ end }}) *{{ .Model }} {
-{{ range $key, $column := .Columns }}
+func (m *{{ .Model }}) SetPrimary({{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }}, {{ end }}{{ $index = inc $index }} {{ icameled $column.Name }} {{ $column.ModelType }} {{ end }}{{ end }}) *{{ .Model }} { {{ range $key, $column := .Columns }}
 {{ if $column.IsPrimaryKey }}m.{{ $column.ModelName }} = &{{ icameled $column.ModelName }}{{ end }}{{ end }}
     return m
 }
