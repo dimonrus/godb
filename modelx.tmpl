@@ -1,0 +1,285 @@
+package models
+
+import (
+{{ range $key, $import := .Imports }}{{ $import }}
+{{ end }}
+)
+{{ $index := 0 }}{{ $comma := 0 }}{{ $isSoft := false }}
+// {{ .Model }} model
+type {{ .Model }} struct { {{ range $key, $column := .Columns }}
+    {{ $column.ModelName }} {{ if $column.IsArray }} {{ $column.ModelType }} {{ else }} {{ pointerType $column.ModelType }} {{ end }} {{ $column.Tags }} {{ if $column.Description }}// {{ $column.Description }}{{ end }}{{ end }}
+}
+
+// New {{ .Model }} method
+func New{{ .Model }}() *{{ .Model }} {
+    return &{{ .Model }}{}
+}
+
+// Model set primary keys
+func (m *{{ .Model }}) SetPrimary({{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }}, {{ end }}{{ $index = inc $index }} {{ icameled $column.ModelName }} {{ $column.ModelType }} {{ end }}{{ end }}) *{{ .Model }} {
+{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}m.{{ $column.ModelName }} = &{{ icameled $column.ModelName }}{{ end }}{{ end }}
+    return m
+}
+
+// Model table name
+func (m *{{ .Model }}) Table() string {
+    return "{{ .Table }}"
+}
+
+// Model columns
+func (m *{{ .Model }}) Columns() []string {
+    return []string{ {{ range $key, $column := .Columns }}{{ if $key }}, {{ end }}"{{ $column.Name }}"{{ end }} }
+}
+
+// Model column
+func (m *{{ .Model }}) Column(field interface{}) string {
+    return godb.ModelColumn(m, field)
+}
+
+// Model values
+func (m *{{ .Model }}) Values() (values []interface{}) {
+    return append(values, {{ range $key, $column := .Columns }}{{ if $key }}, {{ end }}{{ if $column.IsArray }}pq.Array({{ end }}&m.{{ $column.ModelName }}{{ if $column.IsArray  }}){{ end }}{{ end }})
+}
+
+// SQL load Query
+func (m *{{ .Model }}) GetLoadQuery() string {
+    return "SELECT " + strings.Join(m.Columns(), ",") + " FROM "+m.Table()+" WHERE {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }} AND {{ end }}{{ $index = inc $index }}{{ $column.Name }} = ${{ $index }}{{ end }}{{ end }};"
+}
+
+// Load method
+func (m *{{ .Model }}) Load(q godb.Queryer) porterr.IError {
+    if {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }} && {{ end }}{{ $index = inc $index }} m.{{ $column.ModelName }} != nil {{ end }}{{ end }} {
+        err := q.QueryRow(m.GetLoadQuery(), {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }}, {{ end }}{{ $index = inc $index }}*m.{{ $column.ModelName }}{{ end }}{{ end }}).Scan(m.Values()...)
+        if err != nil {
+            if err == sql.ErrNoRows {
+                return porterr.New(porterr.PortErrorSearch, "No {{ .Model }} found").HTTP(http.StatusNotFound)
+            }
+            return porterr.New(porterr.PortErrorDatabaseQuery, "Load {{ .Model }} query error: "+err.Error())
+        }
+        return nil
+    }
+    return porterr.New(porterr.PortErrorParam, "No primary key for {{ .Model }} specified, nothing for load").HTTP(http.StatusBadRequest)
+}
+
+{{ range $key, $column := .Columns }}{{ if $column.ForeignTable }}
+    {{ if $column.ForeignIsSoft }}
+    // Soft Load Foreign Model {{ foreign $column.Name }}
+    func (m *{{ $.Model }}) GetSoft{{ foreign $column.Name }}(q godb.Queryer) (*{{ cameled $column.ForeignTable }}, porterr.IError) {
+    {{ if $column.IsNullable }}if m.{{ $column.ModelName }} == nil {
+            return nil, porterr.New(porterr.PortErrorParam, "No foreign key for {{ cameled $column.ForeignTable }} ({{ $column.ModelName }}) specified, nothing for load").HTTP(http.StatusBadRequest)
+        }{{ end }}
+        f := &{{ cameled $column.ForeignTable }} { {{ cameled $column.ForeignColumnName }}:{{ if $column.IsNullable }}*{{ end }}m.{{ $column.ModelName }} }
+        return f, f.SoftLoad(q)
+    }
+    {{ else }}
+    // Load Foreign Model {{ foreign $column.Name }}
+    func (m *{{ $.Model }}) Get{{ foreign $column.Name }}(q godb.Queryer) (*{{ cameled $column.ForeignTable }}, porterr.IError) {
+    {{ if $column.IsNullable }}if m.{{ $column.ModelName }} == nil {
+        return nil, porterr.New(porterr.PortErrorParam, "No foreign key for {{ cameled $column.ForeignTable }} ({{ $column.ModelName }}) specified, nothing for load").HTTP(http.StatusBadRequest)
+        }{{ end }}
+        f := &{{ cameled $column.ForeignTable }} { {{ cameled $column.ForeignColumnName }}:{{ if $column.IsNullable }}*{{ end }}m.{{ $column.ModelName }} }
+        return f, f.Load(q)
+    }
+    {{ end }}
+{{ end }}{{ end }}
+
+{{ range $key, $column := .Columns }}{{ if $column.IsDeleted }}{{ $isSoft = true }}
+    // Soft load method
+    func (m *{{ $.Model }}) SoftLoad(q godb.Queryer) porterr.IError {
+        e := m.Load(q)
+        if e != nil {
+            return e
+        }
+        if m.{{ $column.ModelName }} != nil {
+            return porterr.New(porterr.PortErrorSearch, "{{ $.Model }} is deleted").HTTP(http.StatusNotFound)
+        }
+        return nil
+    }
+
+    // SQL Soft delete Query
+    func (m *{{ $.Model }}) GetSoftDeleteQuery() string {
+        return "UPDATE "+m.Table()+" SET {{ $column.Name }} = NOW() WHERE {{ $index = 0 }}{{ range $key, $col := $.Columns }}{{ if $col.IsPrimaryKey }}{{ if $index }} AND {{ end }}{{ $index = inc $index }}{{ $col.Name }} = ${{$index}}{{ end }}{{ end }} RETURNING {{ $column.Name }};"
+    }
+
+    // Soft Delete {{ $.Model }}
+    func (m *{{ $.Model }}) SoftDelete(q godb.Queryer) porterr.IError {
+        err := q.QueryRow(m.GetSoftDeleteQuery(), {{ $index = 0 }}{{ range $key, $col := $.Columns  }}{{ if $col.IsPrimaryKey }}{{ if $index }}, {{ end }}{{ $index = inc $index }}m.{{ $col.ModelName }}{{ end }}{{ end }}).Scan(&m.{{ $column.ModelName }})
+        if err != nil {
+            return porterr.New(porterr.PortErrorDatabaseQuery, "Soft delete {{ $.Model }} error: "+err.Error())
+        }
+        return nil
+    }
+
+    // SQL Soft recover Query
+    func (m *{{ $.Model }}) GetSoftRecoverQuery() string {
+        return "UPDATE "+m.Table()+" SET {{ $column.Name }} = null WHERE {{ $index = 0 }}{{ range $key, $col := $.Columns }}{{ if $col.IsPrimaryKey }}{{ if $index }} AND {{ end }}{{ $index = inc $index }}{{ $col.Name }} = ${{$index}}{{ end }}{{ end }} RETURNING {{ $column.Name }};"
+    }
+
+    // Soft Recover {{ $.Model }}
+    func (m *{{ $.Model }}) SoftRecover(q godb.Queryer) porterr.IError {
+        err := q.QueryRow(m.GetSoftRecoverQuery(), {{ $index = 0 }}{{ range $key, $col := $.Columns  }}{{ if $col.IsPrimaryKey }}{{ if $index }}, {{ end }}{{ $index = inc $index }}m.{{ $col.ModelName }}{{ end }}{{ end }}).Scan(&m.{{ $column.ModelName }})
+        if err != nil {
+            return porterr.New(porterr.PortErrorDatabaseQuery, "Soft recover {{ $.Model }} error: "+err.Error())
+        }
+        return nil
+    }
+{{ end }}{{ end }}
+
+// Model update query
+func (m *{{ .Model }}) GetUpdateQuery(condition *godb.Condition, fields ...interface{}) (query string, params []interface{}, e porterr.IError) {
+    return godb.ModelUpdateQuery(m, condition, fields...)
+}
+
+// SQL delete Query
+func (m *{{ .Model }}) GetDeleteQuery() string {
+    return "DELETE FROM "+m.Table()+" WHERE {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }} AND {{ end }}{{ $index = inc $index }}{{ $column.Name }} = ${{$index}}{{ end }}{{ end }};"
+}
+
+// Delete method
+func (m *{{ .Model }}) Delete(q godb.Queryer) porterr.IError {
+    _, err := q.Exec(m.GetDeleteQuery(), {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }}, {{ end }}{{ $index = inc $index }}m.{{ $column.ModelName }}{{ end }}{{ end }})
+    if err != nil {
+        return porterr.New(porterr.PortErrorDatabaseQuery, "Delete {{ .Model }} error: "+err.Error())
+    }
+    return nil
+}
+
+// SQL exists Query
+func (m *{{ .Model }}) GetExistsQuery() string {
+    return "SELECT EXISTS (SELECT 1 FROM "+m.Table()+" WHERE {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }} AND {{ end }}{{ $index = inc $index }}{{ $column.Name }} = ${{$index}}{{ end }}{{ end }});"
+}
+
+// Exists method
+func (m *{{ .Model }}) IsExists(q godb.Queryer) (exists bool, e porterr.IError) {
+    err := q.QueryRow(m.GetExistsQuery(), {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }}, {{ end }}{{ $index = inc $index }}m.{{ $column.ModelName }}{{ end }}{{ end }}).Scan(&exists)
+    if err != nil {
+        return false, porterr.New(porterr.PortErrorDatabaseQuery, "If exists {{ .Model }} error: "+err.Error())
+    }
+    return
+}
+
+{{ if .HasSequence }}
+    // Model saver method with sequence
+    func (m *{{ .Model }}) Save(q godb.Queryer) porterr.IError {
+        var err error
+        if {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }} && {{ end }}{{ $index = inc $index }} m.{{ $column.ModelName }} != nil {{ end }}{{ end }} {
+            err = q.QueryRow(m.GetSaveQuery(), {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if or (not (system $column)) $column.IsPrimaryKey }}{{ if $index }}, {{ end }}{{ if $column.IsArray }}pq.Array({{ end }}&m.{{ $column.ModelName }}{{ if $column.IsArray }}){{ end }}{{ $index = inc $index }}{{ end}}{{ end}}).
+            Scan({{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if (system $column) }}{{ if $index }}, {{ end }}&m.{{ $column.ModelName }}{{ $index = inc $index }}{{ end}}{{ end}})
+        } else {
+            err = q.QueryRow(m.GetSaveQuery(), {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if not (system $column) }}{{ if $index }}, {{ end }}{{ if $column.IsArray }}pq.Array({{ end }}&m.{{ $column.ModelName }}{{ if $column.IsArray  }}){{ end }}{{ $index = inc $index }}{{ end}}{{ end}}).
+            Scan({{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if (system $column) }}{{ if $index }}, {{ end }}&m.{{ $column.ModelName }}{{ $index = inc $index }}{{ end}}{{ end}})
+        }
+        if err != nil {
+            return porterr.New(porterr.PortErrorDatabaseQuery, "Save {{ .Model }} error: "+err.Error())
+        }
+        return nil
+    }
+
+    // SQL upsert Query
+    func (m *{{ .Model }}) GetSaveQuery() string {
+        if {{ $index := 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }} && {{ end }}{{ $index = inc $index }} m.{{ $column.ModelName }} != nil {{ end }}{{ end }} {
+            return `UPDATE `+m.Table()+` SET {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ $index = inc $index }}{{ end }}{{ if not (system $column) }}{{ if $comma }}, {{ end }}{{ $index = inc $index }}{{ $column.Name }} = ${{ $index }}{{ $comma = 1 }}{{ end }}{{ end }}{{ range $key, $column := .Columns }}{{ if eq $column.Name "updated_at" }}, updated_at = NOW(){{ end }}{{ end }}
+            WHERE {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }} AND {{ end }}{{ $index = inc $index }}{{ $column.Name }} = ${{ $index }}{{ end }}{{ end }}
+            {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if (system $column) }}{{ if eq $index 0 }}RETURNING {{ end }}{{ if $index }}, {{ end }}{{ $column.Name }}{{ $index = inc $index }}{{ end}}{{ end}};`
+        }
+        return `INSERT INTO `+m.Table()+` ({{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if not (system $column) }}{{ if $index }}, {{ end }}{{ $index = inc $index }}{{ $column.Name }}{{ end}}{{ end}}) VALUES ({{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if not (system $column) }}{{ if $index }}, {{ end }}{{ $index = inc $index }}${{ $index }}{{ end }}{{ end }})
+        {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if (system $column) }}{{ if eq $index 0 }}RETURNING {{ end }}{{ if $index }}, {{ end }}{{ $index = inc $index }}{{ $column.Name }}{{ end}}{{ end}};`
+    }
+
+{{ else }}
+    // Model saver method without sequence
+    func (m *{{ .Model }}) Save(q godb.Queryer) porterr.IError {
+        err := q.QueryRow(m.GetSaveQuery(), {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if or (not (system $column)) $column.IsPrimaryKey }}{{ if $index }}, {{ end }}{{ if $column.IsArray }}pq.Array({{ end }}&m.{{ $column.ModelName }}{{ if $column.IsArray  }}){{ end }}{{ $index = inc $index }}{{ end}}{{ end}}).
+        Scan({{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if (system $column) }}{{ if $index }}, {{ end }}&m.{{ $column.ModelName }}{{ $index = inc $index }}{{ end}}{{ end}})
+        if err != nil {
+            return porterr.New(porterr.PortErrorDatabaseQuery, "Save {{ .Model }} error: "+err.Error())
+        }
+        return nil
+    }
+
+    // SQL Insert Update Query
+    func (m *{{ .Model }}) GetSaveQuery() string {
+        return `INSERT INTO `+m.Table()+` ({{ $index := 0 }}{{ range $key, $column := .Columns }}{{ if not (system $column) }}{{ if $index }}, {{ end }}{{ $column.Name }}{{ $index = inc $index }}{{ end}}{{ end}}) VALUES ({{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if not (system $column) }}{{ if $index }}, {{ end }}{{ $index = inc $index }}${{ $index }}{{ end }}{{ end }})
+        ON CONFLICT ({{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }}, {{ end }}{{ $index = inc $index }}{{ $column.Name }}{{ end }}{{ end }}) DO UPDATE SET {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if not (system $column) }}{{ if $index }}, {{ end }}{{ $index = inc $index }}{{ $column.Name }} = ${{ $index }}{{ end }}{{ end }}{{ range $key, $column := .Columns }}{{ if eq $column.Name "updated_at" }}, updated_at = NOW(){{ end }}{{ end }}
+        {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if (system $column) }}{{ if eq $index 0 }}RETURNING {{ end }}{{ if $index }}, {{ end }}{{ $column.Name }}{{ $index = inc $index }}{{ end }}{{ end }};`
+    }
+{{ end }}
+
+// Implement Collection
+type {{ .Model }}Items []*{{ .Model }}
+
+// Collection of {{ .Model }}
+type {{ .Model }}Collection struct {
+    collection {{ .Model }}Items
+    *godb.Iterator
+    *godb.QB{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}
+    {{ $column.ModelName }}s []{{ $column.ModelType }} {{ end }}{{ end }}
+}
+
+// Get first item of model collection
+func (c *{{ .Model }}Collection) First() *{{ .Model }} {
+    if len(c.collection) > 0 {
+        return c.collection[0]
+    }
+    return nil
+}
+
+// Get last item of model collection
+func (c *{{ .Model }}Collection) Last() *{{ .Model }} {
+    if c.Count() > 0 {
+        return c.collection[c.Count()-1]
+    }
+    return nil
+}
+
+// Get item
+func (c *{{ .Model }}Collection) Item() *{{ .Model }} {
+    if c.Cursor() < c.Count() && c.Cursor() > -1 {
+        return c.collection[c.Cursor()]
+    }
+    return nil
+}
+
+// Set items
+func (c *{{ .Model }}Collection) AddItem(item *{{ .Model }}) {
+    c.collection = append(c.collection, item)
+    c.SetCount(len(c.collection))
+    return
+}
+
+// Get all items
+func (c *{{ .Model }}Collection) Items() {{ .Model }}Items {
+    return c.collection
+}
+
+// Load collection
+func (c *{{ .Model }}Collection) Load(q godb.Queryer) porterr.IError {
+    rows, err := q.Query(c.String(), c.GetArguments()...)
+    if err != nil {
+        return porterr.New(porterr.PortErrorDatabaseQuery, "Search {{ .Model }} query error: "+err.Error())
+    }
+    defer rows.Close()
+    for rows.Next() {
+        model := &{{ .Model }}{}
+        err = rows.Scan(model.Values()...)
+        if err != nil {
+            return porterr.New(porterr.PortErrorIO, "Search {{ .Model }} scan error: "+err.Error())
+        }{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}
+        c.{{ $column.ModelName }}s = append(c.{{ $column.ModelName }}s, *model.{{ $column.ModelName}}){{ end }}{{ end }}
+        c.collection = append(c.collection, model)
+    }
+    c.Iterator = godb.NewIterator(len(c.collection))
+    return nil
+}
+
+// New {{ .Model }} Collection
+func New{{ .Model }}Collection() *{{ .Model }}Collection {
+    m := &{{ .Model }}{}
+    qb := godb.NewQB().Columns(m.Columns()...).From(m.Table())
+    collection := &{{ .Model }}Collection{
+        collection: make({{ .Model }}Items, 0),
+        QB:  qb,
+        Iterator: godb.NewIterator(0),
+    }
+    return collection
+}

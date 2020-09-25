@@ -9,7 +9,11 @@ func TestMakeModel2(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = MakeModel(db, "models", "public", "bench", "model.tmpl", DefaultSystemColumnsSoft)
+	err = MakeModel(db, "models", "public", "profile_agent", "modelx.tmpl", DefaultSystemColumnsSoft)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = MakeModel(db, "models", "public", "profile_data", "modelx.tmpl", DefaultSystemColumnsSoft)
 	if err != nil {
 		t.Fatal(err)
 	}

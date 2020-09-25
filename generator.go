@@ -200,6 +200,7 @@ ORDER BY a.attnum;`, schema, table)
 		case column.DataType == "json":
 			column.ModelType = "json.RawMessage"
 			column.Import = `"encoding/json"`
+			column.IsArray = true
 		case column.DataType == "smallint":
 			column.ModelType = "int16"
 		case column.DataType == "date":
@@ -214,6 +215,7 @@ ORDER BY a.attnum;`, schema, table)
 		case column.DataType == "jsonb":
 			column.ModelType = "json.RawMessage"
 			column.Import = `"encoding/json"`
+			column.IsArray = true
 		case column.DataType == "uuid[]":
 			column.ModelType = "[]string"
 			column.IsArray = true
@@ -316,6 +318,12 @@ func getHelperFunc(systemColumns SystemColumns) template.FuncMap {
 				panic(err)
 			}
 			return cameled
+		},
+		"pointerType": func(modelType string) string {
+			if modelType[0] != '*' {
+				return "*"+modelType
+			}
+			return modelType
 		},
 	}
 }
