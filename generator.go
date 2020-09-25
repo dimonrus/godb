@@ -200,7 +200,7 @@ ORDER BY a.attnum;`, schema, table)
 		case column.DataType == "json":
 			column.ModelType = "json.RawMessage"
 			column.Import = `"encoding/json"`
-			column.IsArray = true
+			column.IsNullable = false
 		case column.DataType == "smallint":
 			column.ModelType = "int16"
 		case column.DataType == "date":
@@ -215,7 +215,7 @@ ORDER BY a.attnum;`, schema, table)
 		case column.DataType == "jsonb":
 			column.ModelType = "json.RawMessage"
 			column.Import = `"encoding/json"`
-			column.IsArray = true
+			column.IsNullable = false
 		case column.DataType == "uuid[]":
 			column.ModelType = "[]string"
 			column.IsArray = true
