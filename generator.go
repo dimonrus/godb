@@ -240,7 +240,7 @@ ORDER BY a.attnum;`, schema, table)
 			return nil, errors.New(fmt.Sprintf("unknown column type: %s", column.DataType))
 		}
 
-		if column.IsNullable && !column.IsArray && !column.IsByteArray {
+		if column.IsNullable && !column.IsArray {
 			column.ModelType = "*" + column.ModelType
 		}
 
