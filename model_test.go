@@ -3,18 +3,20 @@ package godb
 import (
 	"fmt"
 	"github.com/dimonrus/porterr"
+	"github.com/lib/pq"
 	"testing"
 	"time"
 )
 
-type ModelIntegration struct{
+type ModelIntegration struct {
 	schema string
 }
 
 type TestModel struct {
 	Id        int       `json:"id" sequence:"+" column:"id"`
 	Name      string    `json:"name" sequence:"-" column:"name"`
-	SomeInt      int    `json:"someInt" sequence:"-" column:"some_int"`
+	Pages     []string  `json:"pages" sequence:"-" column:"pages"`
+	SomeInt   int       `json:"someInt" sequence:"-" column:"some_int"`
 	CreatedAt time.Time `json:"createdAt" sequence:"-" column:"created_at"`
 	ModelIntegration
 }
@@ -31,7 +33,7 @@ func (m *TestModel) Columns() []string {
 
 // Model values
 func (m *TestModel) Values() (values []interface{}) {
-	return append(values, &m.Id, &m.Name, &m.Name, &m.CreatedAt)
+	return append(values, &m.Id, &m.Name, &m.Name, pq.Array(&m.Pages), &m.CreatedAt)
 }
 func (m *TestModel) Load(q Queryer) porterr.IError   { return nil }
 func (m *TestModel) Save(q Queryer) porterr.IError   { return nil }
@@ -88,11 +90,26 @@ func TestModelValues(t *testing.T) {
 	m := &TestModel{
 		Id:        10,
 		Name:      "scdscs",
+		Pages:     []string{"one", "two"},
 		SomeInt:   12123,
 		CreatedAt: time.Now(),
 	}
-	vals := ModelValues(m, "id", "some_int")
-	fmt.Println(vals)
+	vals := ModelValues(m, "id", "pages", "some_int")
+	fmt.Println(vals[2])
+}
+
+func BenchmarkModelValues(b *testing.B) {
+	m := &TestModel{
+		Id:        10,
+		Name:      "scdscs",
+		Pages:     []string{"one", "two"},
+		SomeInt:   12123,
+		CreatedAt: time.Now(),
+	}
+	for i := 0; i < b.N; i++ {
+		ModelValues(m, "id", "pages", "some_int")
+	}
+	b.ReportAllocs()
 }
 
 func TestModelColumn(t *testing.T) {

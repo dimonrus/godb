@@ -49,11 +49,11 @@ func ModelValues(model IModel, columns ...string) (values []interface{}) {
 	if model == nil {
 		return nil
 	}
-	ve := reflect.ValueOf(model).Elem()
 	te := reflect.TypeOf(model).Elem()
-	for i := 0; i < ve.NumField(); i++ {
+	modelValues := model.Values()
+	for i := 0; i < te.NumField(); i++ {
 		if gohelp.ExistsInArrayString(te.Field(i).Tag.Get("column"), columns) {
-			values = append(values, ve.Field(i).Interface())
+			values = append(values, modelValues[i])
 		}
 	}
 	return
@@ -132,7 +132,7 @@ func ModelInsertQuery(model IModel, fields ...interface{}) (sql string, columns 
 					return
 				}
 				if ve.Field(i).Addr().Pointer() == cte.Elem().Addr().Pointer() {
-					if te.Field(i).Tag.Get("seq") != "true" {
+					if te.Field(i).Tag.Get("sequence") != "true" {
 						columns = append(columns, te.Field(i).Tag.Get("column"))
 					}
 				}
