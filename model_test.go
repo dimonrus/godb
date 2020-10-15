@@ -32,8 +32,8 @@ func (m *TestModel) Columns() []string {
 }
 
 // Model values
-func (m *TestModel) Values() (values []interface{}) {
-	return append(values, &m.Id, &m.Name, &m.Name, pq.Array(&m.Pages), &m.CreatedAt)
+func (m *TestModel) Values() []interface{} {
+	return[]interface{}{&m.Id, &m.Name, &m.Name, pq.Array(&m.Pages), &m.CreatedAt}
 }
 func (m *TestModel) Load(q Queryer) porterr.IError   { return nil }
 func (m *TestModel) Save(q Queryer) porterr.IError   { return nil }
@@ -95,7 +95,10 @@ func TestModelValues(t *testing.T) {
 		CreatedAt: time.Now(),
 	}
 	vals := ModelValues(m, "id", "pages", "some_int")
-	fmt.Println(vals[2])
+	fmt.Printf("%+v\n", vals)
+	vals[0] = new(int)
+
+	fmt.Println(m)
 }
 
 func BenchmarkModelValues(b *testing.B) {

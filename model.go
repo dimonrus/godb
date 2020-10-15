@@ -51,11 +51,15 @@ func ModelValues(model IModel, columns ...string) (values []interface{}) {
 	}
 	te := reflect.TypeOf(model).Elem()
 	modelValues := model.Values()
-	for i := 0; i < te.NumField(); i++ {
+	values = make([]interface{}, len(columns))
+	var j int
+	for i := 0; i < len(modelValues); i++ {
 		if gohelp.ExistsInArrayString(te.Field(i).Tag.Get("column"), columns) {
-			values = append(values, modelValues[i])
+			values[j] = modelValues[i]
+			j++
 		}
 	}
+	values = values[:j]
 	return
 }
 
