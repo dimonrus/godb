@@ -20,10 +20,12 @@ func (m *Migration) Upgrade(class string) error {
 		query := fmt.Sprintf("SELECT apply_time FROM migration_%s WHERE version = '%s'", class, migration.GetVersion())
 		err = m.DBO.QueryRow(query).Scan(&applyTime)
 		if err != nil && err != sql.ErrNoRows {
+			tx.Rollback()
 			return err
 		}
 		// If already applied continue
 		if applyTime != 0 {
+			tx.Commit()
 			continue
 		}
 		// Apply new migration
