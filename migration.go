@@ -55,8 +55,8 @@ func (m *Migration) Downgrade(class string, version string) error {
 			continue
 		}
 		// Check migration that already applied
-		query := fmt.Sprintf("SELECT apply_time FROM migration_%s WHERE version = $1", class)
-		err := m.DBO.QueryRow(query, migration.GetVersion()).Scan(&applyTime)
+		query := fmt.Sprintf("SELECT apply_time FROM migration_%s WHERE version = '%s'", class, version)
+		err := m.DBO.QueryRow(query).Scan(&applyTime)
 		if err != nil && err != sql.ErrNoRows {
 			return err
 		}
@@ -77,8 +77,8 @@ func (m *Migration) Downgrade(class string, version string) error {
 			return err
 		}
 		// Delete from migration table
-		query = fmt.Sprintf("DELETE FROM migration_%s WHERE version = $1;", class)
-		_, err = tx.Exec(query, version)
+		query = fmt.Sprintf("DELETE FROM migration_%s WHERE version = '%s';", class, version)
+		_, err = tx.Exec(query)
 		if err != nil {
 			tx.Rollback()
 			return err
