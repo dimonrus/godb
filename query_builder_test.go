@@ -75,3 +75,21 @@ func TestQB_Intersect(t *testing.T) {
 	m.With("some", q)
 	fmt.Println(m.String())
 }
+
+func TestQB_Except(t *testing.T) {
+	q := NewQB()
+	q.Columns("*")
+	q.From("some_table")
+
+	u1 := NewQB()
+	u1.Columns("*")
+	u1.From("some_table_union_1")
+
+	u2 := NewQB()
+	u2.Columns("*")
+	u2.From("some_table_except_2")
+
+	q.Union(u1)
+	q.Except(u2)
+	fmt.Println(q.String())
+}

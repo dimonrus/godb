@@ -27,6 +27,7 @@ type QB struct {
 	orders     []string
 	group      []string
 	union      []*QB
+	except     []*QB
 	intersect  []*QB
 	having     Condition
 	pagination sqlPagination
@@ -57,6 +58,14 @@ func (f *QB) Union(qb *QB) *QB {
 	return f
 }
 
+// Except
+func (f *QB) Except(qb *QB) *QB {
+	if qb != nil {
+		f.except = append(f.except, qb)
+	}
+	return f
+}
+
 // Intersect
 func (f *QB) Intersect(qb *QB) *QB {
 	if qb != nil {
@@ -74,6 +83,12 @@ func (f *QB) ResetIntersect() *QB {
 // Reset Union
 func (f *QB) ResetUnion() *QB {
 	f.union = make([]*QB, 0)
+	return f
+}
+
+// Reset Except
+func (f *QB) ResetExcept() *QB {
+	f.except = make([]*QB, 0)
 	return f
 }
 
@@ -196,6 +211,12 @@ func (f *QB) GetArguments() []interface{} {
 		}
 	}
 
+	if len(f.except) > 0 {
+		for _, u := range f.except {
+			arguments = append(arguments, u.GetArguments()...)
+		}
+	}
+
 	if len(f.intersect) > 0 {
 		for _, i := range f.intersect {
 			arguments = append(arguments, i.GetArguments()...)
@@ -209,6 +230,7 @@ func (f *QB) String() string {
 	var result = make([]string, 0)
 	var with = make([]string, 0)
 	var union = make([]string, 0)
+	var except = make([]string, 0)
 	var intersect = make([]string, 0)
 
 	// With render
@@ -265,6 +287,14 @@ func (f *QB) String() string {
 			union = append(union, u.String())
 		}
 		result = append(result, "UNION "+strings.Join(union, " UNION "))
+	}
+
+	// Except render
+	if len(f.except) > 0 {
+		for _, u := range f.except {
+			except = append(except, u.String())
+		}
+		result = append(result, "EXCEPT "+strings.Join(except, " EXCEPT "))
 	}
 
 	// Intersect render
