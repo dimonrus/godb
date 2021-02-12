@@ -41,9 +41,11 @@ func (m *DictionaryModel) parse(rows *sql.Rows) (*DictionaryModel, error) {
 }
 
 // Search by filer
-func (m *DictionaryModel) SearchDictionary(q Queryer, filter SqlFilter) (*[]DictionaryModel, []int, error) {
-	query := fmt.Sprintf("SELECT "+strings.Join((&DictionaryModel{}).Columns(), ",")+" FROM public.dictionary %s", filter.String())
-	rows, err := q.Query(query, filter.GetArguments()...)
+func (m *DictionaryModel) SearchDictionary(q Queryer) (*[]DictionaryModel, []int, error) {
+	qb := NewQB().From("public.dictionary").
+		Columns((&DictionaryModel{}).Columns()...).
+		AddOrder("type", "created_at", "id")
+	rows, err := q.Query(qb.String(), qb.GetArguments()...)
 
 	entityIds := make([]int, 0)
 	if err != nil {
@@ -97,11 +99,7 @@ CREATE INDEX IF NOT EXISTS dictionary_type_idx ON dictionary (type);`
 
 // Create or update dictionary mapping
 func GenerateDictionaryMapping(path string, q Queryer) error {
-	filter := SqlFilter{}
-	filter.AddOrder("type")
-	filter.AddOrder("created_at")
-	filter.AddOrder("id")
-	dictionaries, _, err := (&DictionaryModel{}).SearchDictionary(q, filter)
+	dictionaries, _, err := (&DictionaryModel{}).SearchDictionary(q)
 	if err != nil {
 		return err
 	}

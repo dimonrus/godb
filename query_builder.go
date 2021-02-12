@@ -11,6 +11,12 @@ type sqlWith struct {
 	queries []*QB
 }
 
+// SQL Pagination limit offset
+type sqlPagination struct {
+	Limit  int
+	Offset int
+}
+
 // Len of with queries
 func (w *sqlWith) Len() int {
 	return len(w.keys)
