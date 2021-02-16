@@ -272,6 +272,41 @@ func (c *{{ .Model }}Collection) Load(q godb.Queryer) porterr.IError {
     return nil
 }
 
+// Create or Update collection
+func (c *{{ .Model }}Collection) CreateOrUpdate(q godb.Queryer) (e porterr.IError) {
+    m := New{{ .Model }}()
+    i, err := q.Prepare(m.GetSaveQuery())
+    if err != nil {
+        return porterr.New(porterr.PortErrorIO, err.Error())
+    }
+    m.SetPrimary({{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }}, {{ end }}{{ $index = inc $index }}{{ $column.DefaultTypeValue }}{{ end }}{{ end }})
+    u, err := q.Prepare(m.GetSaveQuery())
+    if err != nil {
+        return porterr.New(porterr.PortErrorIO, err.Error())
+    }
+    defer func() {
+        if e != nil {
+            return
+        }
+        _ = i.Close()
+        _ = u.Close()
+    }()
+    for c.Next() {
+        item := c.Item()
+        if {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }} && {{ end }}{{ $index = inc $index }} item.{{ $column.ModelName }} != nil {{ end }}{{ end }} {
+            err = u.QueryRow({{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if or (not (system $column)) $column.IsPrimaryKey }}{{ if $index }}, {{ end }}{{ if $column.IsArray }}pq.Array({{ end }}&item.{{ $column.ModelName }}{{ if $column.IsArray }}){{ end }}{{ $index = inc $index }}{{ end}}{{ end}}).
+            Scan({{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if (system $column) }}{{ if $index }}, {{ end }}&item.{{ $column.ModelName }}{{ $index = inc $index }}{{ end}}{{ end}})
+        } else {
+            err = i.QueryRow({{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if not (system $column) }}{{ if $index }}, {{ end }}{{ if $column.IsArray }}pq.Array({{ end }}&item.{{ $column.ModelName }}{{ if $column.IsArray  }}){{ end }}{{ $index = inc $index }}{{ end}}{{ end}}).
+            Scan({{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if (system $column) }}{{ if $index }}, {{ end }}&item.{{ $column.ModelName }}{{ $index = inc $index }}{{ end}}{{ end}})
+        }
+        if err != nil {
+            return porterr.New(porterr.PortErrorIO, err.Error())
+        }
+    }
+    return
+}
+
 // New {{ .Model }} Collection
 func New{{ .Model }}Collection() *{{ .Model }}Collection {
     m := &{{ .Model }}{}

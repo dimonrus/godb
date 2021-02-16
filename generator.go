@@ -48,6 +48,7 @@ type Column struct {
 	IsDeleted         bool    // Is deleted at column
 	HasUniqueIndex    bool    // If column is a part of unique index
 	UniqueIndexName   *string // Unique index name
+	DefaultTypeValue  *string // Default value for type
 }
 
 // Array of columns
@@ -242,6 +243,19 @@ ORDER BY a.attnum;`, schema, table)
 
 		if column.IsNullable && !column.IsArray {
 			column.ModelType = "*" + column.ModelType
+		}
+
+		if !column.IsNullable {
+			if strings.Contains(column.ModelType, "int") || strings.Contains(column.ModelType, "float") {
+				column.DefaultTypeValue = new(string)
+				*column.DefaultTypeValue = "0"
+			} else {
+				column.DefaultTypeValue = new(string)
+				*column.DefaultTypeValue = `""`
+			}
+		} else {
+			column.DefaultTypeValue = new(string)
+			*column.DefaultTypeValue = "nil"
 		}
 
 		if column.IsPrimaryKey == true {
