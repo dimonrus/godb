@@ -64,20 +64,20 @@ func (m *{{ .Model }}) Load(q godb.Queryer) porterr.IError {
 {{ range $key, $column := .Columns }}{{ if $column.ForeignTable }}
     {{ if $column.ForeignIsSoft }}
     // Soft Load Foreign Model {{ foreign $column.Name }}
-    func (m *{{ $.Model }}) GetSoft{{ foreign $column.Name }}(q godb.Queryer) (*{{ cameled $column.ForeignTable }}, porterr.IError) { {{ if $column.IsNullable }}
+    func (m *{{ $.Model }}) GetSoft{{ foreign $column.Name }}(q godb.Queryer) (*{{ model $column.ForeignSchema $column.ForeignTable }}, porterr.IError) { {{ if $column.IsNullable }}
         if m.{{ $column.ModelName }} == nil {
             return nil, porterr.New(porterr.PortErrorParam, "No foreign key for {{ cameled $column.ForeignTable }} ({{ $column.ModelName }}) specified, nothing for load").HTTP(http.StatusBadRequest)
         }{{ end }}
-        f := &{{ cameled $column.ForeignTable }} { {{ cameled $column.ForeignColumnName }}: m.{{ $column.ModelName }} }
+        f := &{{ model $column.ForeignSchema $column.ForeignTable }} { {{ cameled $column.ForeignColumnName }}: m.{{ $column.ModelName }} }
         return f, f.SoftLoad(q)
     }
     {{ else }}
     // Load Foreign Model {{ foreign $column.Name }}
-    func (m *{{ $.Model }}) Get{{ foreign $column.Name }}(q godb.Queryer) (*{{ cameled $column.ForeignTable }}, porterr.IError) { {{ if $column.IsNullable }}
+    func (m *{{ $.Model }}) Get{{ foreign $column.Name }}(q godb.Queryer) (*{{ model $column.ForeignSchema $column.ForeignTable }}, porterr.IError) { {{ if $column.IsNullable }}
         if m.{{ $column.ModelName }} == nil {
             return nil, porterr.New(porterr.PortErrorParam, "No foreign key for {{ cameled $column.ForeignTable }} ({{ $column.ModelName }}) specified, nothing for load").HTTP(http.StatusBadRequest)
         }{{ end }}
-        f := &{{ cameled $column.ForeignTable }} { {{ cameled $column.ForeignColumnName }}:m.{{ $column.ModelName }} }
+        f := &{{ model $column.ForeignSchema $column.ForeignTable }} { {{ cameled $column.ForeignColumnName }}:m.{{ $column.ModelName }} }
         return f, f.Load(q)
     }
     {{ end }}
@@ -212,7 +212,8 @@ type {{ .Model }}Items []*{{ .Model }}
 type {{ .Model }}Collection struct {
     collection {{ .Model }}Items
     *godb.Iterator
-    *godb.QB{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}
+    *godb.QB
+    CountOver int{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}
     {{ $column.ModelName }}s []{{ $column.ModelType }} {{ end }}{{ end }}
 }
 
@@ -252,21 +253,80 @@ func (c *{{ .Model }}Collection) Items() {{ .Model }}Items {
     return c.collection
 }
 
-// Load collection
-func (c *{{ .Model }}Collection) Load(q godb.Queryer) porterr.IError {
-    rows, err := q.Query(c.String(), c.GetArguments()...)
+// load collection private method
+func (c *{{ .Model }}Collection) load(q godb.Queryer) (rows *sql.Rows, e porterr.IError) {
+    var err error
+    rows, err = q.Query(c.String(), c.GetArguments()...)
     if err != nil {
-        return porterr.New(porterr.PortErrorDatabaseQuery, "Search {{ .Model }} query error: "+err.Error())
+        e = porterr.New(porterr.PortErrorDatabaseQuery, "Search {{ .Model }} query error: "+err.Error())
+    }
+    return
+}
+
+// Collection get model and value method
+func (c *{{ .Model }}Collection) getModelValues() (model *{{ .Model }}, values []interface{}) {
+    model = &{{ .Model }}{}
+    if c.CountOver >= 0 {
+        values = append(model.Values(), &c.CountOver)
+    } else {
+        values = model.Values()
+    }
+    return
+}
+
+// Collection scan method
+func (c *{{ .Model }}Collection) scan(rows *sql.Rows) (e porterr.IError) {
+    if rows == nil {
+        return
     }
     defer rows.Close()
     for rows.Next() {
-        model := &{{ .Model }}{}
-        err = rows.Scan(model.Values()...)
+        model, values := c.getModelValues()
+        err := rows.Scan(values...)
         if err != nil {
-            return porterr.New(porterr.PortErrorIO, "Search {{ .Model }} scan error: "+err.Error())
+            e = porterr.New(porterr.PortErrorIO, "Search {{ .Model }} scan error: "+err.Error())
+            return
         }{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}
         c.{{ $column.ModelName }}s = append(c.{{ $column.ModelName }}s, *model.{{ $column.ModelName}}){{ end }}{{ end }}
         c.collection = append(c.collection, model)
+    }
+    return
+}
+
+// Add count column to SQL
+func (c *{{ .Model }}Collection) AddCountOver() {
+    if c.CountOver < 0 {
+        c.Columns("COUNT(*) OVER()")
+        c.CountOver = 0
+    }
+}
+
+// Remove count column from SQL
+func (c *{{ .Model }}Collection) RemoveCountOver() {
+    c.CountOver = -1
+    m, _ := c.getModelValues()
+    c.ResetColumns()
+    c.Columns(m.Columns()...)
+}
+
+// Clear collection
+func (c *{{ .Model }}Collection) clear() {
+    c.Iterator.Reset()
+    c.collection = nil{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}
+    c.{{ $column.ModelName }}s = nil{{ end }}{{ end }}
+}
+
+// Load collection
+func (c *{{ .Model }}Collection) Load(q godb.Queryer) porterr.IError {
+    rows, e := c.load(q)
+    if e != nil {
+        return e
+    }
+    c.clear()
+    defer rows.Close()
+    e = c.scan(rows)
+    if e != nil {
+        return e
     }
     c.Iterator = godb.NewIterator(len(c.collection))
     return nil
@@ -315,6 +375,7 @@ func New{{ .Model }}Collection() *{{ .Model }}Collection {
         collection: make({{ .Model }}Items, 0),
         QB:  qb,
         Iterator: godb.NewIterator(0),
+        CountOver: -1,
     }
     return collection
 }

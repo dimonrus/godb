@@ -334,6 +334,19 @@ func getHelperFunc(systemColumns SystemColumns) template.FuncMap {
 			}
 			return cameled
 		},
+		"model": func(schema string, table string) string {
+			var name string
+			var err error
+			if schema == "public" || schema == "" {
+				name, err = gohelp.ToCamelCase(table, true)
+			} else {
+				name, err = gohelp.ToCamelCase(schema+"_"+table, true)
+			}
+			if err != nil {
+				panic(err)
+			}
+			return name
+		},
 		"pointerType": func(modelType string) string {
 			if modelType[0] != '*' {
 				return "*" + modelType
