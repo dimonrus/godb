@@ -253,6 +253,13 @@ func (c *{{ .Model }}Collection) Items() {{ .Model }}Items {
     return c.collection
 }
 
+// Clear collection
+func (c *{{ .Model }}Collection) clear() {
+    c.Iterator.Reset()
+    c.collection = nil{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}
+    c.{{ $column.ModelName }}s = nil{{ end }}{{ end }}
+}
+
 // load collection private method
 func (c *{{ .Model }}Collection) load(q godb.Queryer) (rows *sql.Rows, e porterr.IError) {
     var err error
@@ -307,13 +314,6 @@ func (c *{{ .Model }}Collection) RemoveCountOver() {
     m, _ := c.getModelValues()
     c.ResetColumns()
     c.Columns(m.Columns()...)
-}
-
-// Clear collection
-func (c *{{ .Model }}Collection) clear() {
-    c.Iterator.Reset()
-    c.collection = nil{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}
-    c.{{ $column.ModelName }}s = nil{{ end }}{{ end }}
 }
 
 // Load collection

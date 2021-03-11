@@ -335,17 +335,7 @@ func getHelperFunc(systemColumns SystemColumns) template.FuncMap {
 			return cameled
 		},
 		"model": func(schema string, table string) string {
-			var name string
-			var err error
-			if schema == "public" || schema == "" {
-				name, err = gohelp.ToCamelCase(table, true)
-			} else {
-				name, err = gohelp.ToCamelCase(schema+"_"+table, true)
-			}
-			if err != nil {
-				panic(err)
-			}
-			return name
+			return getModelName(schema, table)
 		},
 		"pointerType": func(modelType string) string {
 			if modelType[0] != '*' {
@@ -382,8 +372,23 @@ func CreateModelFile(schema string, table string, path string) (*os.File, string
 	return f, filePath, nil
 }
 
+// Prepare model name
+func getModelName(schema string, table string) string {
+	var name string
+	var err error
+	if schema == "public" || schema == "" {
+		name, err = gohelp.ToCamelCase(table, true)
+	} else {
+		name, err = gohelp.ToCamelCase(schema+"_"+table, true)
+	}
+	if err != nil {
+		panic(err)
+	}
+	return name
+}
+
 // Create model
-func MakeModel(db Queryer, path string, schema string, table string, templatePath string, systemColumns SystemColumns) error {
+func MakeModel(db Queryer, dir string, schema string, table string, templatePath string, systemColumns SystemColumns) error {
 	// Imports in model file
 	var imports = []string{
 		`"strings"`,
@@ -392,9 +397,6 @@ func MakeModel(db Queryer, path string, schema string, table string, templatePat
 		`"github.com/dimonrus/godb"`,
 		`"github.com/dimonrus/porterr"`,
 	}
-
-	// Name of model
-	var name = table
 
 	if table == "" {
 		return errors.New("table name is empty")
@@ -427,65 +429,13 @@ func MakeModel(db Queryer, path string, schema string, table string, templatePat
 		return errors.New("No table found or no columns in table ")
 	}
 
-	// Create all foreign models if not exists
-	for i := range *columns {
-		c := (*columns)[i]
-		if c.ForeignTable != nil {
-			var found bool
-			err := filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
-				if info == nil {
-					return nil
-				}
-				if info.IsDir() {
-					return nil
-				}
-				file, err := os.Open(path)
-				if err != nil {
-					return err
-				}
-				defer file.Close()
-				data, err := ioutil.ReadAll(file)
-				if err != nil {
-					return err
-				}
-				cammeled, err := gohelp.ToCamelCase(*c.ForeignTable, true)
-				if err != nil {
-					return err
-				}
-				if strings.Contains(string(data), fmt.Sprintf("type %s struct {", cammeled)) {
-					found = true
-				}
-				return nil
-			})
-			if err != nil {
-				return err
-			}
-			if !found {
-				go func() {
-					err = MakeModel(db, path, *c.ForeignSchema, *c.ForeignTable, templatePath, systemColumns)
-					if err != nil {
-						db.(*DBO).Logger.Printf("Model file created: %s", path)
-					}
-				}()
-			}
-		}
-	}
-
 	// Collect imports
 	for _, column := range *columns {
 		imports = gohelp.AppendUniqueString(imports, column.Import)
 	}
 
-	// Name of the model
-	if schema != "public" && schema != "" {
-		name = schema + "_" + table
-	}
-
 	// To camel case
-	modelName, err := gohelp.ToCamelCase(name, true)
-	if err != nil {
-		return err
-	}
+	modelName := getModelName(schema, table)
 
 	var hasSequence bool
 	// Check for sequence and primary key
@@ -497,7 +447,7 @@ func MakeModel(db Queryer, path string, schema string, table string, templatePat
 	}
 
 	// Create file
-	file, path, err := CreateModelFile(schema, table, path)
+	file, path, err := CreateModelFile(schema, table, dir)
 	if err != nil {
 		return err
 	}
@@ -537,5 +487,43 @@ func MakeModel(db Queryer, path string, schema string, table string, templatePat
 		dbo.Logger.Printf("Model file created: %s", path)
 	}
 
+	// Create all foreign models if not exists
+	for i := range *columns {
+		c := (*columns)[i]
+		if c.ForeignTable != nil {
+			var found bool
+			err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+				if info == nil {
+					return nil
+				}
+				if info.IsDir() {
+					return nil
+				}
+				file, err := os.Open(path)
+				if err != nil {
+					return err
+				}
+				defer file.Close()
+				data, err := ioutil.ReadAll(file)
+				if err != nil {
+					return err
+				}
+				modelName := getModelName(schema, *c.ForeignTable)
+				if strings.Contains(string(data), fmt.Sprintf("type %s struct {", modelName)) {
+					found = true
+				}
+				return nil
+			})
+			if err != nil {
+				return err
+			}
+			if !found {
+				err = MakeModel(db, dir, *c.ForeignSchema, *c.ForeignTable, templatePath, systemColumns)
+				if err != nil {
+					db.(*DBO).Logger.Printf("Model file generator error: %s", err.Error())
+				}
+			}
+		}
+	}
 	return nil
 }
