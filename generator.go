@@ -134,10 +134,10 @@ FROM pg_attribute a
          LEFT JOIN information_schema.columns AS ic
                    ON ic.column_name = a.attname AND ic.table_name = t.relname AND ic.table_schema = s.nspname
          LEFT JOIN information_schema.key_column_usage AS kcu
-                   ON kcu.table_name = t.relname AND kcu.column_name = a.attname
+                   ON kcu.table_name = t.relname AND kcu.column_name = a.attname AND kcu.table_schema = s.nspname
          LEFT JOIN information_schema.table_constraints AS tc
-                   ON tc.constraint_name = kcu.constraint_name AND tc.constraint_type = 'FOREIGN KEY'
-         LEFT JOIN information_schema.constraint_column_usage AS ccu ON ccu.constraint_name = tc.constraint_name
+                   ON tc.constraint_name = kcu.constraint_name AND tc.constraint_type = 'FOREIGN KEY' AND tc.table_schema = kcu.constraint_schema
+         LEFT JOIN information_schema.constraint_column_usage AS ccu ON ccu.constraint_name = tc.constraint_name AND tc.table_schema = ccu.table_schema
 WHERE a.attnum > 0
   AND NOT a.attisdropped
   AND s.nspname = '%s'
