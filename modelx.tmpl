@@ -245,6 +245,8 @@ func (c *{{ .Model }}Collection) Item() *{{ .Model }} {
 func (c *{{ .Model }}Collection) AddItem(item *{{ .Model }}) {
     c.collection = append(c.collection, item)
     c.SetCount(len(c.collection))
+   {{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}
+    c.{{ $column.ModelName }}s = append(c.{{ $column.ModelName }}s, *item.{{ $column.ModelName}}){{ end }}{{ end }}
     return
 }
 
@@ -256,7 +258,7 @@ func (c *{{ .Model }}Collection) Items() {{ .Model }}Items {
 // Clear collection
 func (c *{{ .Model }}Collection) clear() {
     c.Iterator.Reset()
-    c.collection = nil{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}
+    c.collection = make({{ .Model }}Items, 0){{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}
     c.{{ $column.ModelName }}s = nil{{ end }}{{ end }}
 }
 
