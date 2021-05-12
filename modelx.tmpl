@@ -1,4 +1,6 @@
 package models
+// generated automatically
+// if you change the file stash you changes before regenerate model
 
 import (
 {{ range $key, $import := .Imports }}{{ $import }}
@@ -245,8 +247,10 @@ func (c *{{ .Model }}Collection) Item() *{{ .Model }} {
 func (c *{{ .Model }}Collection) AddItem(item *{{ .Model }}) {
     c.collection = append(c.collection, item)
     c.SetCount(len(c.collection))
-   {{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}
-    c.{{ $column.ModelName }}s = append(c.{{ $column.ModelName }}s, *item.{{ $column.ModelName}}){{ end }}{{ end }}
+   {{ range $key, $column := .Columns }}{{ if and $column.IsPrimaryKey }}
+    if item.{{ $column.ModelName }} != nil {
+        c.{{ $column.ModelName }}s = append(c.{{ $column.ModelName }}s, *item.{{ $column.ModelName}})
+    }{{ end }}{{ end }}
     return
 }
 
@@ -258,12 +262,18 @@ func (c *{{ .Model }}Collection) Items() {{ .Model }}Items {
 // Clear collection
 func (c *{{ .Model }}Collection) clear() {
     c.Iterator.Reset()
-    c.collection = make({{ .Model }}Items, 0){{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}
-    c.{{ $column.ModelName }}s = nil{{ end }}{{ end }}
+    c.collection = make({{ .Model }}Items, 0)
+    c.resetPrimaryKeys()
 }
 
-// load collection private method
-func (c *{{ .Model }}Collection) load(q godb.Queryer) (rows *sql.Rows, e porterr.IError) {
+// Reset primary keys
+func (c *{{ .Model }}Collection) resetPrimaryKeys() {
+    {{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}c.{{ $column.ModelName }}s = nil{{ end }}
+    {{ end }}
+}
+
+// fetch collection data private method
+func (c *{{ .Model }}Collection) preload(q godb.Queryer) (rows *sql.Rows, e porterr.IError) {
     var err error
     rows, err = q.Query(c.String(), c.GetArguments()...)
     if err != nil {
@@ -295,9 +305,8 @@ func (c *{{ .Model }}Collection) scan(rows *sql.Rows) (e porterr.IError) {
         if err != nil {
             e = porterr.New(porterr.PortErrorIO, "Search {{ .Model }} scan error: "+err.Error())
             return
-        }{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}
-        c.{{ $column.ModelName }}s = append(c.{{ $column.ModelName }}s, *model.{{ $column.ModelName}}){{ end }}{{ end }}
-        c.collection = append(c.collection, model)
+        }
+        c.AddItem(model)
     }
     return
 }
@@ -320,18 +329,14 @@ func (c *{{ .Model }}Collection) RemoveCountOver() {
 
 // Load collection
 func (c *{{ .Model }}Collection) Load(q godb.Queryer) porterr.IError {
-    rows, e := c.load(q)
+    rows, e := c.preload(q)
     if e != nil {
         return e
     }
     c.clear()
     defer rows.Close()
     e = c.scan(rows)
-    if e != nil {
-        return e
-    }
-    c.Iterator = godb.NewIterator(len(c.collection))
-    return nil
+    return e
 }
 
 // Create or Update collection
@@ -353,6 +358,7 @@ func (c *{{ .Model }}Collection) CreateOrUpdate(q godb.Queryer) (e porterr.IErro
         _ = i.Close()
         _ = u.Close()
     }()
+    c.resetPrimaryKeys()
     for c.Next() {
         item := c.Item()
         if {{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }} && {{ end }}{{ $index = inc $index }} item.{{ $column.ModelName }} != nil {{ end }}{{ end }} {
@@ -365,6 +371,10 @@ func (c *{{ .Model }}Collection) CreateOrUpdate(q godb.Queryer) (e porterr.IErro
         if err != nil {
             return porterr.New(porterr.PortErrorIO, err.Error())
         }
+        {{ range $key, $column := .Columns }}{{ if and $column.IsPrimaryKey }}
+         if item.{{ $column.ModelName }} != nil {
+            c.{{ $column.ModelName }}s = append(c.{{ $column.ModelName }}s, *item.{{ $column.ModelName}})
+         }{{ end }}{{ end }}
     }
     return
 }
