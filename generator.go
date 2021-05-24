@@ -190,7 +190,7 @@ ORDER BY a.attnum;`, schema, table)
 		case column.DataType == "bigint":
 			column.ModelType = "int64"
 		case column.DataType == "integer":
-			column.ModelType = "int"
+			column.ModelType = "int32"
 		case column.DataType == "text":
 			column.ModelType = "string"
 		case column.DataType == "double precision":
