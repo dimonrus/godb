@@ -172,6 +172,12 @@ ORDER BY a.attnum;`, schema, table)
 
 		column.ModelName = name
 		seq := "-"
+		if column.Sequence == nil && column.Default != nil {
+			if strings.Contains(*column.Default, "seq") {
+				column.Sequence = new(string)
+				*column.Sequence = *column.Default
+			}
+		}
 		if column.Sequence != nil {
 			seq = "+"
 		}
