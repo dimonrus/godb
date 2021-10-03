@@ -3,7 +3,6 @@ package godb
 import (
 	"database/sql"
 	"fmt"
-	"github.com/lib/pq"
 	_ "github.com/lib/pq"
 	"log"
 	"os"
@@ -332,25 +331,3 @@ func TestMakeModel(t *testing.T) {
 		t.Fatal(err)
 	}
 }
-
-func TestComplexQuery(t *testing.T) {
-	f := NewSqlFilter()
-	f.Columns("b.id, b.name, b.self_id, b.dictionary_id, b.created_at, d.code")
-	f.From("bench b")
-	f.Relate("JOIN dictionary d on d.id = b.dictionary_id")
-	f.Relate("LEFT JOIN dictionary d1 on d1.id = b.dictionary_id")
-	f.Where().AddExpression("d.id = ANY(?)", pq.Array([]int64{1003, 1001}))
-	f.AddOrder("name desc")
-	f.SetPagination(10, 5)
-
-	db, err := initDb()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	_, err = db.Query(f.String(), f.GetArguments()...)
-	if err != nil {
-		t.Fatal(err)
-	}
-}
-
