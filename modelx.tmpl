@@ -347,18 +347,13 @@ func (c *{{ .Model }}Collection) CreateOrUpdate(q godb.Queryer) (e porterr.IErro
     if err != nil {
         return porterr.New(porterr.PortErrorIO, err.Error())
     }
+    defer func() { _ = i.Close() }()
     m.SetPrimary({{ $index = 0 }}{{ range $key, $column := .Columns }}{{ if $column.IsPrimaryKey }}{{ if $index }}, {{ end }}{{ $index = inc $index }}{{ $column.DefaultTypeValue }}{{ end }}{{ end }})
     u, err := q.Prepare(m.GetSaveQuery())
     if err != nil {
         return porterr.New(porterr.PortErrorIO, err.Error())
     }
-    defer func() {
-        if e != nil {
-            return
-        }
-        _ = i.Close()
-        _ = u.Close()
-    }()
+    defer func() { _ = u.Close() }()
     c.resetPrimaryKeys()
     for c.Next() {
         item := c.Item()
