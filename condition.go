@@ -35,7 +35,7 @@ func (c *Condition) String() string {
 			slaves = append(slaves, (*c.merge).condition[i].String())
 		}
 		if c.expression != nil {
-			slaves = append(slaves, "(" + strings.Join(c.expression, " "+c.operator+" ") + ")")
+			slaves = append(slaves, "("+strings.Join(c.expression, " "+c.operator+" ")+")")
 		}
 		return "(" + strings.Join(slaves, " "+c.merge.operator+" ") + ")"
 	} else {
@@ -48,10 +48,7 @@ func (c *Condition) String() string {
 
 // Check if condition is empty
 func (c *Condition) IsEmpty() bool {
-	if len(c.expression) == 0 && c.merge == nil {
-		return true
-	}
-	return false
+	return c == nil || (len(c.expression) == 0 && c.merge == nil)
 }
 
 // Get arguments
