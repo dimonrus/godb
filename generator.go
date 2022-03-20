@@ -51,6 +51,20 @@ type Column struct {
 	DefaultTypeValue  *string // Default value for type
 }
 
+// GetModelFieldTag Prepare ModelFiledTag by Column
+func (c Column) GetModelFieldTag() (field ModelFiledTag) {
+	field.Column = c.Name
+	if c.ForeignColumnName != nil {
+		field.ForeignKey = *c.ForeignSchema + "." + *c.ForeignTable + "." + *c.ForeignColumnName
+	}
+	field.IsSequence = c.Sequence != nil
+	field.IsRequired = !c.IsNullable
+	field.IsSystem = c.IsCreated || c.IsUpdated || c.IsDeleted
+	field.IsUnique = c.HasUniqueIndex
+	field.IsPrimaryKey = c.IsPrimaryKey
+	return
+}
+
 // Array of columns
 type Columns []Column
 
@@ -169,19 +183,13 @@ ORDER BY a.attnum;`, schema, table)
 		if err != nil {
 			return nil, err
 		}
-
 		column.ModelName = name
-		seq := "-"
 		if column.Sequence == nil && column.Default != nil {
 			if strings.Contains(*column.Default, "seq") {
 				column.Sequence = new(string)
 				*column.Sequence = *column.Default
 			}
 		}
-		if column.Sequence != nil {
-			seq = "+"
-		}
-		column.Tags = fmt.Sprintf(`%ccolumn:"%s" sequence:"%s" json:"%s"%c`, '`', column.Name, seq, json, '`')
 		if column.Name == sysCols.Created {
 			column.IsCreated = true
 		}
@@ -191,6 +199,8 @@ ORDER BY a.attnum;`, schema, table)
 		if column.Name == sysCols.Deleted {
 			column.IsDeleted = true
 		}
+		fTag := column.GetModelFieldTag()
+		column.Tags = fmt.Sprintf(`%cdb:"%s" json:"%s"%c`, '`', fTag.String(), json, '`')
 
 		switch {
 		case column.DataType == "bigint":

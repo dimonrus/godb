@@ -71,9 +71,11 @@ func ModelValues(model IModel, columns ...string) (values []interface{}) {
 	te := reflect.TypeOf(model).Elem()
 	modelValues := model.Values()
 	values = make([]interface{}, len(columns))
+	var tField ModelFiledTag
 	var j int
 	for i := 0; i < len(modelValues); i++ {
-		if gohelp.ExistsInArray(te.Field(i).Tag.Get("column"), columns) {
+		tField = ParseModelFiledTag(te.Field(i).Tag.Get("db"))
+		if gohelp.ExistsInArray(tField.Column, columns) {
 			values[j] = modelValues[i]
 			j++
 		}
@@ -94,6 +96,7 @@ func ModelUpdateQuery(model IModel, condition *Condition, fields ...interface{})
 	}
 	params = make([]interface{}, 0)
 	var columns []string
+	var tField ModelFiledTag
 	ve := reflect.ValueOf(model).Elem()
 	te := reflect.TypeOf(model).Elem()
 	for i := 0; i < ve.NumField(); i++ {
@@ -104,14 +107,15 @@ func ModelUpdateQuery(model IModel, condition *Condition, fields ...interface{})
 				return
 			}
 			if ve.Field(i).Addr().Pointer() == cte.Elem().Addr().Pointer() {
-				columns = append(columns, te.Field(i).Tag.Get("column")+" = ?")
+				tField = ParseModelFiledTag(te.Field(i).Tag.Get("db"))
+				columns = append(columns, tField.Column+" = ?")
 				params = append(params, v)
 			}
 		}
 	}
 	if len(columns) > 0 {
 		sql = "UPDATE " + model.Table() + " SET " + strings.Join(columns, ",")
-		if condition != nil && !condition.IsEmpty() {
+		if !condition.IsEmpty() {
 			sql += " WHERE " + condition.String() + ";"
 			params = append(params, condition.GetArguments()...)
 		} else {
@@ -130,7 +134,7 @@ func ModelDeleteQuery(model IModel, condition *Condition) (sql string, e porterr
 		return
 	}
 	sql = "DELETE FROM " + model.Table()
-	if condition != nil && !condition.IsEmpty() {
+	if !condition.IsEmpty() {
 		sql += " WHERE " + condition.String() + ";"
 	} else {
 		sql += ";"
@@ -141,13 +145,14 @@ func ModelDeleteQuery(model IModel, condition *Condition) (sql string, e porterr
 // Model insert query
 func ModelInsertQuery(model IModel, fields ...interface{}) (sql string, columns []string, e porterr.IError) {
 	if model == nil {
-		e = porterr.New(porterr.PortErrorArgument, "Model is nil, check your logic")
+		e = porterr.New(porterr.PortErrorArgument, "Model is nil, check the logic")
 		return
 	}
 	ve := reflect.ValueOf(model).Elem()
 	te := reflect.TypeOf(model).Elem()
-	for i := 0; i < ve.NumField(); i++ {
-		if len(fields) > 0 {
+	var tField ModelFiledTag
+	if len(fields) > 0 {
+		for i := 0; i < ve.NumField(); i++ {
 			for _, v := range fields {
 				cte := reflect.ValueOf(v)
 				if cte.Kind() != reflect.Ptr {
@@ -155,14 +160,16 @@ func ModelInsertQuery(model IModel, fields ...interface{}) (sql string, columns 
 					return
 				}
 				if ve.Field(i).Addr().Pointer() == cte.Elem().Addr().Pointer() {
-					if te.Field(i).Tag.Get("sequence") != "true" {
-						columns = append(columns, te.Field(i).Tag.Get("column"))
-					}
+					tField = ParseModelFiledTag(te.Field(i).Tag.Get("db"))
+					columns = append(columns, tField.Column)
 				}
 			}
-		} else {
-			if te.Field(i).Tag.Get("sequence") == "-" && ve.Field(i).CanSet() {
-				columns = append(columns, te.Field(i).Tag.Get("column"))
+		}
+	} else {
+		for i := 0; i < ve.NumField(); i++ {
+			tField = ParseModelFiledTag(te.Field(i).Tag.Get("db"))
+			if !tField.IsSequence && ve.Field(i).CanSet() {
+				columns = append(columns, tField.Column)
 			}
 		}
 	}
