@@ -60,7 +60,7 @@ func (c Columns) GetImports() []string {
 	var imports []string
 
 	for i := range c {
-		imports = gohelp.AppendUniqueString(imports, c[i].Import)
+		imports = gohelp.AppendUnique(imports, c[i].Import)
 	}
 
 	return imports
@@ -313,7 +313,7 @@ func getHelperFunc(systemColumns SystemColumns) template.FuncMap {
 			return i + 1
 		},
 		"system": func(column Column) bool {
-			return gohelp.ExistsInArrayString(column.Name, []string{systemColumns.Created, systemColumns.Updated, systemColumns.Deleted}) ||
+			return gohelp.ExistsInArray(column.Name, []string{systemColumns.Created, systemColumns.Updated, systemColumns.Deleted}) ||
 				(column.IsPrimaryKey && column.Sequence != nil)
 		},
 		"cameled": func(name string) string {
@@ -437,7 +437,7 @@ func MakeModel(db Queryer, dir string, schema string, table string, templatePath
 
 	// Collect imports
 	for _, column := range *columns {
-		imports = gohelp.AppendUniqueString(imports, column.Import)
+		imports = gohelp.AppendUnique(imports, column.Import)
 	}
 
 	// To camel case

@@ -28,12 +28,12 @@ func (m *TestModel) Table() string {
 
 // Model columns
 func (m *TestModel) Columns() []string {
-	return []string{"id", "name", "created_at"}
+	return []string{"id", "name", "pages", "some_int", "created_at"}
 }
 
 // Model values
 func (m *TestModel) Values() []interface{} {
-	return[]interface{}{&m.Id, &m.Name, &m.Name, pq.Array(&m.Pages), &m.CreatedAt}
+	return []interface{}{&m.Id, &m.Name, pq.Array(&m.Pages), &m.SomeInt, &m.CreatedAt}
 }
 func (m *TestModel) Load(q Queryer) porterr.IError   { return nil }
 func (m *TestModel) Save(q Queryer) porterr.IError   { return nil }
@@ -128,6 +128,24 @@ func TestModelColumn(t *testing.T) {
 	}
 
 	fmt.Print(q)
+}
+
+func TestModelColumns(t *testing.T) {
+	m := &TestModel{
+		Id:    0,
+		Name:  "asasf",
+		Pages: []string{"foo", "bar"},
+	}
+	columns := ModelColumns(m, &m.Name, &m.SomeInt)
+	if len(columns) != 2 {
+		t.Fatal("wrong")
+	}
+	if columns[0] != "name" {
+		t.Fatal("wrong")
+	}
+	if columns[1] != "some_int" {
+		t.Fatal("wrong")
+	}
 }
 
 func BenchmarkTestModel(b *testing.B) {

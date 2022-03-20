@@ -32,6 +32,28 @@ func TestQB_String(t *testing.T) {
 	fmt.Println(qb.String())
 }
 
+func TestCondition_IsEmpty(t *testing.T) {
+	var c *Condition
+	if !c.IsEmpty() {
+		t.Fatal("wrong")
+	}
+	condFuncEmpty := func(c *Condition) {
+		if !c.IsEmpty() {
+			t.Fatal("wrong")
+		}
+	}
+	condFuncNotEmpty := func(c *Condition) {
+		if c.IsEmpty() {
+			t.Fatal("wrong")
+		}
+	}
+	condFuncEmpty(c)
+	c = NewSqlCondition(ConditionOperatorAnd)
+	condFuncEmpty(c)
+	c.AddExpression("some = ?", 1)
+	condFuncNotEmpty(c)
+}
+
 func TestQB_Union(t *testing.T) {
 	q := NewQB()
 	q.Columns("*")
@@ -52,7 +74,7 @@ func TestQB_Union(t *testing.T) {
 }
 
 func TestQB_Intersect(t *testing.T) {
-	m :=  NewQB()
+	m := NewQB()
 	m.Columns("*")
 	m.From("main_table")
 

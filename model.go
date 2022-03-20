@@ -17,6 +17,14 @@ type IModel interface {
 	Delete(q Queryer) porterr.IError
 }
 
+// IModelCrud CRUD query interface
+type IModelCrud interface {
+	GetLoadQuery() string
+	GetInsertQuery() string
+	GetUpdateQuery() string
+	GetDeleteQuery() string
+}
+
 // DB model interface
 type ISoftModel interface {
 	IModel
@@ -27,21 +35,32 @@ type ISoftModel interface {
 
 // Model column in db
 func ModelColumn(model IModel, field interface{}) string {
-	if model == nil {
-		return ""
+	columns := ModelColumns(model, field)
+	if len(columns) > 0 {
+		return columns[0]
 	}
-	cte := reflect.ValueOf(field)
-	if cte.Kind() != reflect.Ptr {
-		return ""
+	return ""
+}
+
+// Model columns by fileds
+func ModelColumns(model IModel, field ...interface{}) (columns []string) {
+	if model == nil {
+		return
 	}
 	ve := reflect.ValueOf(model).Elem()
 	te := reflect.TypeOf(model).Elem()
-	for i := 0; i < ve.NumField(); i++ {
-		if ve.Field(i).Addr().Pointer() == cte.Elem().Addr().Pointer() {
-			return te.Field(i).Tag.Get("column")
+	for j := range field {
+		cte := reflect.ValueOf(field[j])
+		if cte.Kind() != reflect.Ptr {
+			continue
+		}
+		for i := 0; i < ve.NumField(); i++ {
+			if ve.Field(i).Addr().Pointer() == cte.Elem().Addr().Pointer() {
+				columns = append(columns, te.Field(i).Tag.Get("column"))
+			}
 		}
 	}
-	return ""
+	return
 }
 
 // Model values by columns
@@ -54,7 +73,7 @@ func ModelValues(model IModel, columns ...string) (values []interface{}) {
 	values = make([]interface{}, len(columns))
 	var j int
 	for i := 0; i < len(modelValues); i++ {
-		if gohelp.ExistsInArrayString(te.Field(i).Tag.Get("column"), columns) {
+		if gohelp.ExistsInArray(te.Field(i).Tag.Get("column"), columns) {
 			values[j] = modelValues[i]
 			j++
 		}
