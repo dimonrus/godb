@@ -49,6 +49,7 @@ func ModelColumns(model IModel, field ...interface{}) (columns []string) {
 	}
 	ve := reflect.ValueOf(model).Elem()
 	te := reflect.TypeOf(model).Elem()
+	var tField ModelFiledTag
 	for j := range field {
 		cte := reflect.ValueOf(field[j])
 		if cte.Kind() != reflect.Ptr {
@@ -56,7 +57,8 @@ func ModelColumns(model IModel, field ...interface{}) (columns []string) {
 		}
 		for i := 0; i < ve.NumField(); i++ {
 			if ve.Field(i).Addr().Pointer() == cte.Elem().Addr().Pointer() {
-				columns = append(columns, te.Field(i).Tag.Get("column"))
+				tField = ParseModelFiledTag(te.Field(i).Tag.Get("db"))
+				columns = append(columns, tField.Column)
 			}
 		}
 	}
