@@ -59,9 +59,11 @@ func (c Column) GetModelFieldTag() (field ModelFiledTag) {
 	}
 	field.IsSequence = c.Sequence != nil
 	field.IsRequired = !c.IsNullable
-	field.IsSystem = c.IsCreated || c.IsUpdated || c.IsDeleted
 	field.IsUnique = c.HasUniqueIndex
 	field.IsPrimaryKey = c.IsPrimaryKey
+	field.IsCreatedAt = c.IsCreated
+	field.IsUpdatedAt = c.IsUpdated
+	field.IsDeletedAt = c.IsDeleted
 	return
 }
 

@@ -15,10 +15,14 @@ type ModelFiledTag struct {
 	IsPrimaryKey bool `tag:"prk"`
 	// Is not null
 	IsRequired bool `tag:"req"`
-	// Is system like as created_at, updated_at, deleted_at
-	IsSystem bool `tag:"sys"`
 	// Is unique
 	IsUnique bool `tag:"unq"`
+	// Is created at column
+	IsCreatedAt bool `tag:"cat"`
+	// Is updated at column
+	IsUpdatedAt bool `tag:"uat"`
+	// Is deleted at column
+	IsDeletedAt bool `tag:"dat"`
 }
 
 // Prepare string tag
@@ -39,11 +43,17 @@ func (t ModelFiledTag) String() string {
 	if t.IsRequired {
 		b.WriteString("req;")
 	}
-	if t.IsSystem {
-		b.WriteString("sys;")
-	}
 	if t.IsUnique {
 		b.WriteString("unq;")
+	}
+	if t.IsCreatedAt {
+		b.WriteString("cat;")
+	}
+	if t.IsUpdatedAt {
+		b.WriteString("uat;")
+	}
+	if t.IsDeletedAt {
+		b.WriteString("dat;")
 	}
 	return b.String()
 }
@@ -71,12 +81,20 @@ func ParseModelFiledTag(tag string) (field ModelFiledTag) {
 				field.IsRequired = true
 				i++
 				indexStart = i
-			case "sys":
-				field.IsSystem = true
-				i++
-				indexStart = i
 			case "unq":
 				field.IsUnique = true
+				i++
+				indexStart = i
+			case "cat":
+				field.IsCreatedAt = true
+				i++
+				indexStart = i
+			case "uat":
+				field.IsDeletedAt = true
+				i++
+				indexStart = i
+			case "dat":
+				field.IsDeletedAt = true
 				i++
 				indexStart = i
 			case "col":

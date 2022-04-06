@@ -6,7 +6,7 @@ import (
 
 func TestParseModelFiledTag(t *testing.T) {
 	t.Run("all_in", func(t *testing.T) {
-		tag := "col~created_at;seq;sys;prk;frk~master.table(id,name);req;unq;"
+		tag := "col~created_at;seq;prk;frk~master.table(id,name);req;unq;cat;"
 		field := ParseModelFiledTag(tag)
 		if field.Column != "created_at" {
 			t.Fatal("Wrong parser column name")
@@ -17,8 +17,8 @@ func TestParseModelFiledTag(t *testing.T) {
 		if !field.IsRequired {
 			t.Fatal("Wrong IsRequired")
 		}
-		if !field.IsSystem {
-			t.Fatal("Wrong IsSystem")
+		if !field.IsCreatedAt {
+			t.Fatal("Wrong is created at")
 		}
 		if !field.IsUnique {
 			t.Fatal("Wrong IsUnique")
@@ -80,7 +80,7 @@ func TestParseModelFiledTag(t *testing.T) {
 
 func BenchmarkParseModelFiledTag(b *testing.B) {
 	b.Run("all", func(b *testing.B) {
-		tag := "col~created_at;seq;sys;prk;frk~master.table(id,name);req;unq;"
+		tag := "col~created_at;seq;sys;prk;frk~master.table(id,name);req;unq;cat;"
 		for i := 0; i < b.N; i++ {
 			_ = ParseModelFiledTag(tag)
 		}
@@ -88,7 +88,7 @@ func BenchmarkParseModelFiledTag(b *testing.B) {
 	})
 
 	b.Run("string", func(b *testing.B) {
-		tag := "col~created_at;seq;sys;prk;frk~master.table(id,name);req;unq;"
+		tag := "col~created_at;seq;sys;prk;frk~master.table(id,name);req;unq;cat;"
 		field := ParseModelFiledTag(tag)
 		for i := 0; i < b.N; i++ {
 			_ = field.String()

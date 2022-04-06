@@ -14,11 +14,11 @@ type ModelIntegration struct {
 }
 
 type TestModel struct {
-	Id        *int       `json:"id" db:"col~id;req;seq;" column:"id"`
-	Name      *string    `json:"name" db:"col~name;req;" column:"name"`
-	Pages     []string   `json:"pages" db:"col~pages;" column:"pages"`
-	SomeInt   *int       `json:"someInt" db:"col~some_int;" column:"some_int"`
-	CreatedAt *time.Time `json:"createdAt" db:"col~created_at;" column:"created_at"`
+	Id        *int       `json:"id" db:"col~id;req;seq;"`
+	Name      *string    `json:"name" db:"col~name;req;"`
+	Pages     []string   `json:"pages" db:"col~pages;"`
+	SomeInt   *int       `json:"someInt" db:"col~some_int;"`
+	CreatedAt *time.Time `json:"createdAt" db:"col~created_at;cat;"`
 }
 
 // Model table name
