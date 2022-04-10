@@ -27,7 +27,7 @@ func (c *wrongConnection) GetDbType() string {
 }
 func (c *connection) String() string {
 	return fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
-		"192.168.1.110", 5433, "godb", "godb", "godb")
+		"10.10.10.100", 5433, "mpauth", "mpauth", "mpauth")
 }
 func (c *connection) GetDbType() string {
 	return "postgres"
@@ -294,37 +294,6 @@ func TestDBO_Prepare(t *testing.T) {
 	}
 	if data.Code != "name_test_update_prp" {
 		t.Fatal("wrong code")
-	}
-	err = deleteTable(db)
-	if err != nil {
-		t.Fatal(err)
-	}
-}
-
-func TestMakeModel(t *testing.T) {
-	db, err := initDb()
-	if err != nil {
-		t.Fatal(err)
-	}
-	db, err = createTable(db)
-	if err != nil {
-		t.Fatal(err)
-	}
-	db, err = createForeignTable(db)
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = MakeModel(db, "models", "public", "apple_attribute", "model.tmpl", DefaultSystemColumns)
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = MakeModel(db, "models", "public", "apple_property", "model.tmpl", DefaultSystemColumns)
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = deleteForeignTable(db)
-	if err != nil {
-		t.Fatal(err)
 	}
 	err = deleteTable(db)
 	if err != nil {

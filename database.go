@@ -3,6 +3,7 @@ package godb
 import (
 	"context"
 	"database/sql"
+	"github.com/dimonrus/gocli"
 	"strconv"
 	"strings"
 	"time"
@@ -15,7 +16,6 @@ func (dbo DBO) Init() (*DBO, error) {
 		return &dbo, err
 	}
 	dbo.DB = db
-
 	return &dbo, nil
 }
 
@@ -35,7 +35,6 @@ func getDb(connection Connection) (*sql.DB, error) {
 	dbo.SetMaxIdleConns(connection.GetMaxIdleConns())
 	dbo.SetConnMaxLifetime(time.Second * time.Duration(connection.GetConnMaxLifetime()))
 	dbo.SetMaxOpenConns(connection.GetMaxConnection())
-
 	return dbo, nil
 }
 
@@ -88,7 +87,7 @@ func (dbo *DBO) Begin() (*SqlTx, error) {
 		Tx:      tx,
 		Options: dbo.Options,
 		transaction: &Transaction{
-			TTL:  int(dbo.Options.TransactionTTL),
+			TTL: int(dbo.Options.TransactionTTL),
 		}}
 	stx.delayedRollback()
 	return stx, err
@@ -99,7 +98,7 @@ func (tx *SqlTx) delayedRollback() {
 	if tx.transaction != nil && tx.transaction.TTL > 0 {
 		go func() {
 			timer := time.After(time.Duration(tx.transaction.TTL) * time.Second)
-			tx.transaction.done = make(chan bool)
+			tx.transaction.done = make(chan struct{})
 			for {
 				select {
 				case <-tx.transaction.done:
@@ -128,7 +127,7 @@ func (tx *SqlTx) commit() error {
 func (tx *SqlTx) Commit() error {
 	// Stop timer
 	if tx.transaction.done != nil {
-		tx.transaction.done <- true
+		tx.transaction.done <- struct{}{}
 	}
 	// Commit
 	return tx.commit()
@@ -143,7 +142,7 @@ func (tx *SqlTx) rollback() error {
 func (tx *SqlTx) Rollback() error {
 	// Stop timer
 	if tx.transaction.done != nil {
-		tx.transaction.done <- true
+		tx.transaction.done <- struct{}{}
 	}
 	// rollback
 	return tx.rollback()
@@ -259,7 +258,7 @@ func preparePositionalArgsQuery(query string) string {
 }
 
 // Logging query
-func logDbQuery(logger Logger, query string, args ...interface{}) {
+func logDbQuery(logger gocli.Logger, query string, args ...interface{}) {
 	queryString := strings.Join(strings.Fields(query), " ")
 	logger.Printf("\n %s", queryString)
 }

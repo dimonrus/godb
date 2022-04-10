@@ -4,7 +4,7 @@ import (
 	"github.com/dimonrus/gohelp"
 )
 
-// Generate transaction id
+// GenTransactionId Generate transaction id
 func GenTransactionId() TransactionId {
 	return TransactionId(gohelp.RandString(16))
 }
@@ -25,7 +25,7 @@ func (p *TransactionPool) Set(id TransactionId, tx *SqlTx) *TransactionPool {
 	return p
 }
 
-// Unset transaction
+// UnSet transaction
 func (p *TransactionPool) UnSet(id TransactionId) *TransactionPool {
 	p.m.Lock()
 	delete(p.transactions, id)
@@ -41,12 +41,12 @@ func (p *TransactionPool) Reset() *TransactionPool {
 	return p
 }
 
-// Transaction count
+// Count transaction count
 func (p *TransactionPool) Count() int {
 	return len(p.transactions)
 }
 
-// Create Transaction pool
+// NewTransactionPool Create transaction pool
 func NewTransactionPool() *TransactionPool {
 	return &TransactionPool{
 		transactions: make(map[TransactionId]*SqlTx),

@@ -2,16 +2,10 @@ package godb
 
 import (
 	"database/sql"
+	"github.com/dimonrus/gocli"
 	"sync"
 	"time"
 )
-
-// Logger
-type Logger interface {
-	Print(v ...interface{})
-	Println(v ...interface{})
-	Printf(format string, v ...interface{})
-}
 
 // Queryer interface
 type Queryer interface {
@@ -37,10 +31,13 @@ type IMigrationFile interface {
 	GetVersion() string
 }
 
-// Database Object Options
+// Options database object options
 type Options struct {
-	Debug          bool
-	Logger         Logger
+	// Debug mode shows logs
+	Debug bool
+	// Logger
+	Logger gocli.Logger
+	// TTL for transaction
 	TransactionTTL time.Duration `yaml:"transactionTTL"`
 }
 
@@ -67,7 +64,7 @@ type SqlStmt struct {
 	query string
 }
 
-// Migration registry
+// MigrationRegistry migration registry
 type MigrationRegistry map[string][]IMigrationFile
 
 // Migration struct
@@ -80,13 +77,13 @@ type Migration struct {
 	RegistryXPath string
 }
 
-// Transaction identifier
+// TransactionId transaction identifier
 type TransactionId string
 
-// Transaction pool
+// TransactionPool transaction pool
 type TransactionPool struct {
 	transactions map[TransactionId]*SqlTx
-	m sync.RWMutex
+	m            sync.RWMutex
 }
 
 // Transaction params
@@ -95,5 +92,5 @@ type Transaction struct {
 	// 0 - no TTL for transaction
 	TTL int
 	// Event on transaction done
-	done chan bool
+	done chan struct{}
 }
