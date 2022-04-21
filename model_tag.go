@@ -23,6 +23,8 @@ type ModelFiledTag struct {
 	IsUpdatedAt bool `tag:"uat"`
 	// Is deleted at column
 	IsDeletedAt bool `tag:"dat"`
+	// Is ingored column
+	IsIgnored bool `tag:"ign"`
 }
 
 // Prepare string tag
@@ -54,6 +56,9 @@ func (t ModelFiledTag) String() string {
 	}
 	if t.IsDeletedAt {
 		b.WriteString("dat;")
+	}
+	if t.IsIgnored {
+		b.WriteString("ign;")
 	}
 	return b.String()
 }
@@ -91,6 +96,10 @@ func ParseModelFiledTag(tag string) (field ModelFiledTag) {
 				indexStart = i
 			case "uat":
 				field.IsDeletedAt = true
+				i++
+				indexStart = i
+			case "ign":
+				field.IsIgnored = true
 				i++
 				indexStart = i
 			case "dat":
