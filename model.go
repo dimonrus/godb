@@ -170,7 +170,7 @@ func ModelInsertQuery(model IModel, fields ...interface{}) (sql string, columns 
 	} else {
 		for i := 0; i < ve.NumField(); i++ {
 			tField = ParseModelFiledTag(te.Field(i).Tag.Get("db"))
-			if !tField.IsSequence && ve.Field(i).CanSet() {
+			if !tField.IsIgnored && !tField.IsSequence && ve.Field(i).CanSet() {
 				columns = append(columns, tField.Column)
 			}
 		}
