@@ -2,6 +2,7 @@ package godb
 
 import (
 	"database/sql"
+	_ "embed"
 	"errors"
 	"fmt"
 	"github.com/dimonrus/gohelp"
@@ -21,6 +22,9 @@ type SystemColumns struct {
 	Updated string
 	Deleted string
 }
+
+//go:embed modelx.tmpl
+var DefaultModelTemplate string
 
 // Column information
 type Column struct {
@@ -422,20 +426,22 @@ func MakeModel(db Queryer, dir string, schema string, table string, templatePath
 
 	// New Template
 	tmpl := template.New("model").Funcs(getHelperFunc(systemColumns))
+	var tmlString = DefaultModelTemplate
 
 	templateFile, err := os.Open(templatePath)
-	if err != nil {
-		return err
-	}
-
-	// Read template
-	data, err := ioutil.ReadAll(templateFile)
-	if err != nil {
+	if err == nil {
+		// Read template
+		data, err := ioutil.ReadAll(templateFile)
+		if err != nil {
+			return err
+		}
+		tmlString = string(data)
+	} else if tmlString == "" {
 		return err
 	}
 
 	// Open model template
-	tmpl = template.Must(tmpl.Parse(string(data)))
+	tmpl = template.Must(tmpl.Parse(tmlString))
 
 	// Columns
 	columns, err := GetTableColumns(db, schema, table, systemColumns)
