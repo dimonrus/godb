@@ -37,6 +37,8 @@ type Options struct {
 	Debug bool
 	// Logger
 	Logger gocli.Logger
+	// log message data
+	logMessage chan string
 	// TTL for transaction
 	TransactionTTL time.Duration `yaml:"transactionTTL"`
 }
