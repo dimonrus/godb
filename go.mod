@@ -1,4 +1,4 @@
-module github.com/dimonrus/godb
+module github.com/dimonrus/godb/v2
 
 go 1.18
 
