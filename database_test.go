@@ -71,6 +71,14 @@ func createTable(db *DBO) (*DBO, error) {
 	if err != nil {
 		return db, err
 	}
+	_, err = db.Exec("comment on column apple_attribute.id is 'column id - single line comment';")
+	if err != nil {
+		return db, err
+	}
+	_, err = db.Exec("comment on column apple_attribute.code is 'column code - multi\nline\r\ncomment';")
+	if err != nil {
+		return db, err
+	}
 	_, err = db.Exec("insert into apple_attribute (code) values ('one'), ('two')")
 	return db, err
 }

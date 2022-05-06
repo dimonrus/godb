@@ -365,6 +365,9 @@ func getHelperFunc(systemColumns SystemColumns) template.FuncMap {
 			}
 			return modelType
 		},
+		"splitByNewline": func(text string) []string {
+			return strings.Split(strings.Replace(text, "\r\n", "\n", -1), "\n")
+		},
 	}
 }
 
