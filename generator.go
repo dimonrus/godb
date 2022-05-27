@@ -180,15 +180,8 @@ ORDER BY a.attnum;`, schema, table)
 			return nil, err
 		}
 
-		name, err := gohelp.ToCamelCase(column.Name, true)
-		if err != nil {
-			return nil, err
-		}
-
-		json, err := gohelp.ToCamelCase(column.Name, false)
-		if err != nil {
-			return nil, err
-		}
+		name := gohelp.ToCamelCase(column.Name, true)
+		json := gohelp.ToCamelCase(column.Name, false)
 		column.ModelName = name
 		if column.Sequence == nil && column.Default != nil {
 			if strings.Contains(*column.Default, "seq") {
@@ -333,28 +326,16 @@ func getHelperFunc(systemColumns SystemColumns) template.FuncMap {
 				(column.IsPrimaryKey && column.Sequence != nil)
 		},
 		"cameled": func(name string) string {
-			cameled, err := gohelp.ToCamelCase(name, true)
-			if err != nil {
-				panic(err)
-			}
-			return cameled
+			return gohelp.ToCamelCase(name, true)
 		},
 		"icameled": func(name string) string {
-			cameled, err := gohelp.ToCamelCase(name, false)
-			if err != nil {
-				panic(err)
-			}
-			return cameled
+			return gohelp.ToCamelCase(name, false)
 		},
 		"foreign": func(name string) string {
 			if name[len(name)-3:] == "_id" {
 				name = name[:len(name)-3]
 			}
-			cameled, err := gohelp.ToCamelCase(name, true)
-			if err != nil {
-				panic(err)
-			}
-			return cameled
+			return gohelp.ToCamelCase(name, true)
 		},
 		"model": func(schema string, table string) string {
 			return getModelName(schema, table)
@@ -399,9 +380,9 @@ func getModelName(schema string, table string) string {
 	var name string
 	var err error
 	if schema == "public" || schema == "" {
-		name, err = gohelp.ToCamelCase(table, true)
+		name = gohelp.ToCamelCase(table, true)
 	} else {
-		name, err = gohelp.ToCamelCase(schema+"_"+table, true)
+		name = gohelp.ToCamelCase(schema+"_"+table, true)
 	}
 	if err != nil {
 		panic(err)

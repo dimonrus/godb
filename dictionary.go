@@ -144,8 +144,7 @@ func GenerateDictionaryMapping(path string, q Queryer) error {
 func getDictionaryTemplate() *template.Template {
 	funcMap := template.FuncMap{
 		"camelCase": func(str string) string {
-			result, _ := gohelp.ToCamelCase(str, true)
-			return result
+			return gohelp.ToCamelCase(str, true)
 		},
 	}
 	return template.Must(template.New("").Funcs(funcMap).Parse(DefaultDictionaryTemplate))
