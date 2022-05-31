@@ -8,8 +8,6 @@ import (
 	"testing"
 )
 
-type connection struct{}
-type wrongConnection struct{ connection }
 type testData struct {
 	Id   int
 	Code string
@@ -17,13 +15,8 @@ type testData struct {
 
 type testDatas []testData
 
-func (c *wrongConnection) String() string {
-	return fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
-		"localhost", 5431, "postgres", "root", "goreav")
-}
-func (c *wrongConnection) GetDbType() string {
-	return "unknown"
-}
+type connection struct{}
+
 func (c *connection) String() string {
 	return fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
 		"10.10.10.100", 5433, "mpauth", "mpauth", "mpauth")
@@ -40,6 +33,16 @@ func (c *connection) GetMaxIdleConns() int {
 
 func (c *connection) GetConnMaxLifetime() int {
 	return 50
+}
+
+type wrongConnection struct{ connection }
+
+func (c *wrongConnection) String() string {
+	return fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
+		"localhost", 5431, "postgres", "root", "goreav")
+}
+func (c *wrongConnection) GetDbType() string {
+	return "unknown"
 }
 
 func TestDBO_InitError(t *testing.T) {

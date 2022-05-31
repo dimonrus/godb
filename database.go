@@ -12,7 +12,7 @@ import (
 
 var logger = func(lg gocli.Logger, message chan string) {
 	for s := range message {
-		lg.Print("\n " + s)
+		lg.Println(s)
 	}
 }
 
@@ -47,7 +47,7 @@ func getDb(connection Connection) (*sql.DB, error) {
 	return dbo, nil
 }
 
-// SQL Query
+// Query SQL exec query
 func (dbo *DBO) Query(query string, args ...interface{}) (*sql.Rows, error) {
 	if strings.Contains(query, "?") {
 		query = preparePositionalArgsQuery(query)
@@ -58,7 +58,7 @@ func (dbo *DBO) Query(query string, args ...interface{}) (*sql.Rows, error) {
 	return dbo.DB.QueryContext(context.Background(), query, args...)
 }
 
-// SQL Exec
+// Exec SQL run query
 func (dbo *DBO) Exec(query string, args ...interface{}) (sql.Result, error) {
 	if strings.Contains(query, "?") {
 		query = preparePositionalArgsQuery(query)
@@ -69,7 +69,7 @@ func (dbo *DBO) Exec(query string, args ...interface{}) (sql.Result, error) {
 	return dbo.DB.ExecContext(context.Background(), query, args...)
 }
 
-// SQL Query Row
+// QueryRow SQL query row
 func (dbo *DBO) QueryRow(query string, args ...interface{}) *sql.Row {
 	if strings.Contains(query, "?") {
 		query = preparePositionalArgsQuery(query)
@@ -132,7 +132,7 @@ func (tx *SqlTx) commit() error {
 	return tx.Tx.Commit()
 }
 
-// Commit
+// Commit transaction
 func (tx *SqlTx) Commit() error {
 	// Stop timer
 	if tx.transaction.done != nil {
@@ -147,7 +147,7 @@ func (tx *SqlTx) rollback() error {
 	return tx.Tx.Rollback()
 }
 
-// Rollback
+// Rollback transaction
 func (tx *SqlTx) Rollback() error {
 	// Stop timer
 	if tx.transaction.done != nil {
@@ -168,7 +168,7 @@ func (tx *SqlTx) Prepare(query string) (*SqlStmt, error) {
 	return &SqlStmt{Stmt: stmt, Options: tx.Options, query: query}, err
 }
 
-// Get Stmt
+// Stmt Get Stmt
 func (tx *SqlTx) Stmt(stmt *SqlStmt) *SqlStmt {
 	tx.m.Lock()
 	defer tx.m.Unlock()
@@ -202,7 +202,7 @@ func (tx *SqlTx) Query(query string, args ...interface{}) (*sql.Rows, error) {
 	return tx.Tx.QueryContext(context.Background(), query, args...)
 }
 
-// Query Row Transaction
+// QueryRow Query Row transaction
 func (tx *SqlTx) QueryRow(query string, args ...interface{}) *sql.Row {
 	tx.m.Lock()
 	defer tx.m.Unlock()
@@ -215,7 +215,7 @@ func (tx *SqlTx) QueryRow(query string, args ...interface{}) *sql.Row {
 	return tx.Tx.QueryRowContext(context.Background(), query, args...)
 }
 
-// Stmt Exec
+// Exec Stmt Exec
 func (st *SqlStmt) Exec(args ...interface{}) (sql.Result, error) {
 	st.m.Lock()
 	defer st.m.Unlock()
@@ -228,7 +228,7 @@ func (st *SqlStmt) Exec(args ...interface{}) (sql.Result, error) {
 	return st.Stmt.ExecContext(context.Background(), args...)
 }
 
-// Stmt Query
+// Query Stmt Query
 func (st *SqlStmt) Query(args ...interface{}) (*sql.Rows, error) {
 	st.m.Lock()
 	defer st.m.Unlock()
@@ -241,7 +241,7 @@ func (st *SqlStmt) Query(args ...interface{}) (*sql.Rows, error) {
 	return st.Stmt.QueryContext(context.Background(), args...)
 }
 
-// Stmt Query Row
+// QueryRow Stmt Query Row
 func (st *SqlStmt) QueryRow(args ...interface{}) *sql.Row {
 	st.m.Lock()
 	defer st.m.Unlock()

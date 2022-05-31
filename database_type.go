@@ -24,13 +24,6 @@ type Connection interface {
 	GetMaxIdleConns() int
 }
 
-// Migration file interface
-type IMigrationFile interface {
-	Up(tx *SqlTx) error
-	Down(tx *SqlTx) error
-	GetVersion() string
-}
-
 // Options database object options
 type Options struct {
 	// Debug mode shows logs
@@ -64,35 +57,4 @@ type SqlStmt struct {
 	*sql.Stmt
 	Options
 	query string
-}
-
-// MigrationRegistry migration registry
-type MigrationRegistry map[string][]IMigrationFile
-
-// Migration struct
-type Migration struct {
-	MigrationPath string
-	DBO           *DBO
-	Config        ConnectionConfig
-	Registry      MigrationRegistry
-	RegistryPath  string
-	RegistryXPath string
-}
-
-// TransactionId transaction identifier
-type TransactionId string
-
-// TransactionPool transaction pool
-type TransactionPool struct {
-	transactions map[TransactionId]*SqlTx
-	m            sync.RWMutex
-}
-
-// Transaction params
-type Transaction struct {
-	// Time to live in unix timestampt
-	// 0 - no TTL for transaction
-	TTL int
-	// Event on transaction done
-	done chan struct{}
 }

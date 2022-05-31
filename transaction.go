@@ -2,7 +2,26 @@ package godb
 
 import (
 	"github.com/dimonrus/gohelp"
+	"sync"
 )
+
+// TransactionId transaction identifier
+type TransactionId string
+
+// TransactionPool transaction pool
+type TransactionPool struct {
+	transactions map[TransactionId]*SqlTx
+	m            sync.RWMutex
+}
+
+// Transaction params
+type Transaction struct {
+	// Time to live in unix timestampt
+	// 0 - no TTL for transaction
+	TTL int
+	// Event on transaction done
+	done chan struct{}
+}
 
 // GenTransactionId Generate transaction id
 func GenTransactionId() TransactionId {
