@@ -3,10 +3,18 @@ package godb
 import (
 	"context"
 	"database/sql"
+	"github.com/dimonrus/gocli"
 	"strconv"
 	"strings"
 	"time"
+	"unsafe"
 )
+
+var logger = func(lg gocli.Logger, message chan string) {
+	for s := range message {
+		lg.Println(s)
+	}
+}
 
 // Init Database Object
 func (dbo DBO) Init() (*DBO, error) {
@@ -15,7 +23,8 @@ func (dbo DBO) Init() (*DBO, error) {
 		return &dbo, err
 	}
 	dbo.DB = db
-
+	dbo.logMessage = make(chan string, dbo.Connection.GetMaxConnection())
+	go logger(dbo.Logger, dbo.logMessage)
 	return &dbo, nil
 }
 
@@ -35,39 +44,38 @@ func getDb(connection Connection) (*sql.DB, error) {
 	dbo.SetMaxIdleConns(connection.GetMaxIdleConns())
 	dbo.SetConnMaxLifetime(time.Second * time.Duration(connection.GetConnMaxLifetime()))
 	dbo.SetMaxOpenConns(connection.GetMaxConnection())
-
 	return dbo, nil
 }
 
-// SQL Query
+// Query SQL exec query
 func (dbo *DBO) Query(query string, args ...interface{}) (*sql.Rows, error) {
 	if strings.Contains(query, "?") {
 		query = preparePositionalArgsQuery(query)
 	}
 	if dbo.Debug == true {
-		go logDbQuery(dbo.Logger, query, args...)
+		dbo.logMessage <- query
 	}
 	return dbo.DB.QueryContext(context.Background(), query, args...)
 }
 
-// SQL Exec
+// Exec SQL run query
 func (dbo *DBO) Exec(query string, args ...interface{}) (sql.Result, error) {
 	if strings.Contains(query, "?") {
 		query = preparePositionalArgsQuery(query)
 	}
 	if dbo.Debug == true {
-		go logDbQuery(dbo.Logger, query, args...)
+		dbo.logMessage <- query
 	}
 	return dbo.DB.ExecContext(context.Background(), query, args...)
 }
 
-// SQL Query Row
+// QueryRow SQL query row
 func (dbo *DBO) QueryRow(query string, args ...interface{}) *sql.Row {
 	if strings.Contains(query, "?") {
 		query = preparePositionalArgsQuery(query)
 	}
 	if dbo.Debug == true {
-		go logDbQuery(dbo.Logger, query, args...)
+		dbo.logMessage <- query
 	}
 	return dbo.DB.QueryRowContext(context.Background(), query, args...)
 }
@@ -88,7 +96,7 @@ func (dbo *DBO) Begin() (*SqlTx, error) {
 		Tx:      tx,
 		Options: dbo.Options,
 		transaction: &Transaction{
-			TTL:  int(dbo.Options.TransactionTTL),
+			TTL: int(dbo.Options.TransactionTTL),
 		}}
 	stx.delayedRollback()
 	return stx, err
@@ -99,7 +107,7 @@ func (tx *SqlTx) delayedRollback() {
 	if tx.transaction != nil && tx.transaction.TTL > 0 {
 		go func() {
 			timer := time.After(time.Duration(tx.transaction.TTL) * time.Second)
-			tx.transaction.done = make(chan bool)
+			tx.transaction.done = make(chan struct{})
 			for {
 				select {
 				case <-tx.transaction.done:
@@ -124,11 +132,11 @@ func (tx *SqlTx) commit() error {
 	return tx.Tx.Commit()
 }
 
-// Commit
+// Commit transaction
 func (tx *SqlTx) Commit() error {
 	// Stop timer
 	if tx.transaction.done != nil {
-		tx.transaction.done <- true
+		tx.transaction.done <- struct{}{}
 	}
 	// Commit
 	return tx.commit()
@@ -139,11 +147,11 @@ func (tx *SqlTx) rollback() error {
 	return tx.Tx.Rollback()
 }
 
-// Rollback
+// Rollback transaction
 func (tx *SqlTx) Rollback() error {
 	// Stop timer
 	if tx.transaction.done != nil {
-		tx.transaction.done <- true
+		tx.transaction.done <- struct{}{}
 	}
 	// rollback
 	return tx.rollback()
@@ -160,7 +168,7 @@ func (tx *SqlTx) Prepare(query string) (*SqlStmt, error) {
 	return &SqlStmt{Stmt: stmt, Options: tx.Options, query: query}, err
 }
 
-// Get Stmt
+// Stmt Get Stmt
 func (tx *SqlTx) Stmt(stmt *SqlStmt) *SqlStmt {
 	tx.m.Lock()
 	defer tx.m.Unlock()
@@ -176,7 +184,7 @@ func (tx *SqlTx) Exec(query string, args ...interface{}) (sql.Result, error) {
 		query = preparePositionalArgsQuery(query)
 	}
 	if tx.Debug == true {
-		go logDbQuery(tx.Logger, query, args...)
+		tx.logMessage <- query
 	}
 	return tx.Tx.ExecContext(context.Background(), query, args...)
 }
@@ -189,12 +197,12 @@ func (tx *SqlTx) Query(query string, args ...interface{}) (*sql.Rows, error) {
 		query = preparePositionalArgsQuery(query)
 	}
 	if tx.Debug == true {
-		go logDbQuery(tx.Logger, query, args...)
+		tx.logMessage <- query
 	}
 	return tx.Tx.QueryContext(context.Background(), query, args...)
 }
 
-// Query Row Transaction
+// QueryRow Query Row transaction
 func (tx *SqlTx) QueryRow(query string, args ...interface{}) *sql.Row {
 	tx.m.Lock()
 	defer tx.m.Unlock()
@@ -202,12 +210,12 @@ func (tx *SqlTx) QueryRow(query string, args ...interface{}) *sql.Row {
 		query = preparePositionalArgsQuery(query)
 	}
 	if tx.Debug == true {
-		go logDbQuery(tx.Logger, query, args...)
+		tx.logMessage <- query
 	}
 	return tx.Tx.QueryRowContext(context.Background(), query, args...)
 }
 
-// Stmt Exec
+// Exec Stmt Exec
 func (st *SqlStmt) Exec(args ...interface{}) (sql.Result, error) {
 	st.m.Lock()
 	defer st.m.Unlock()
@@ -215,12 +223,12 @@ func (st *SqlStmt) Exec(args ...interface{}) (sql.Result, error) {
 		st.query = preparePositionalArgsQuery(st.query)
 	}
 	if st.Debug == true {
-		go logDbQuery(st.Logger, st.query, args...)
+		st.logMessage <- st.query
 	}
 	return st.Stmt.ExecContext(context.Background(), args...)
 }
 
-// Stmt Query
+// Query Stmt Query
 func (st *SqlStmt) Query(args ...interface{}) (*sql.Rows, error) {
 	st.m.Lock()
 	defer st.m.Unlock()
@@ -228,12 +236,12 @@ func (st *SqlStmt) Query(args ...interface{}) (*sql.Rows, error) {
 		st.query = preparePositionalArgsQuery(st.query)
 	}
 	if st.Debug == true {
-		go logDbQuery(st.Logger, st.query, args...)
+		st.logMessage <- st.query
 	}
 	return st.Stmt.QueryContext(context.Background(), args...)
 }
 
-// Stmt Query Row
+// QueryRow Stmt Query Row
 func (st *SqlStmt) QueryRow(args ...interface{}) *sql.Row {
 	st.m.Lock()
 	defer st.m.Unlock()
@@ -241,25 +249,37 @@ func (st *SqlStmt) QueryRow(args ...interface{}) *sql.Row {
 		st.query = preparePositionalArgsQuery(st.query)
 	}
 	if st.Debug == true {
-		go logDbQuery(st.Logger, st.query, args...)
+		st.logMessage <- st.query
 	}
 	return st.Stmt.QueryRowContext(context.Background(), args...)
 }
 
-// Position argument
+// PreparePositionalArgsQuery Position argument
 func preparePositionalArgsQuery(query string) string {
-	parts := strings.Split(query, "?")
-	length := len(parts) - 1
-	for index := range parts {
-		if index < length {
-			parts[index] += "$" + strconv.Itoa(index+1)
+	var ll = len(query)
+	var b = make([]byte, ll*2)
+	var j int64 = 1
+	var i, k, l, s int
+	for i < len(query) {
+		if query[i] == '?' {
+			p := query[s:i] + "$" + strconv.FormatInt(j, 10)
+			l += len(p)
+			if l > len(b) {
+				ll = ll * 2
+				b = append(b, make([]byte, ll)...)
+			}
+			copy(b[k:l], p)
+			s = i + 1
+			k = l
+			j++
 		}
+		i++
 	}
-	return strings.Join(parts, "")
-}
-
-// Logging query
-func logDbQuery(logger Logger, query string, args ...interface{}) {
-	queryString := strings.Join(strings.Fields(query), " ")
-	logger.Printf("\n %s", queryString)
+	if i > s {
+		p := query[s:]
+		l += len(p)
+		copy(b[k:l], p)
+	}
+	b = b[:l]
+	return *(*string)(unsafe.Pointer(&b))
 }

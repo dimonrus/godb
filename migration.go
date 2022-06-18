@@ -8,6 +8,26 @@ import (
 	"time"
 )
 
+// MigrationRegistry migration registry
+type MigrationRegistry map[string][]IMigrationFile
+
+// Migration struct
+type Migration struct {
+	MigrationPath string
+	DBO           *DBO
+	Config        ConnectionConfig
+	Registry      MigrationRegistry
+	RegistryPath  string
+	RegistryXPath string
+}
+
+// IMigrationFile migration file interface
+type IMigrationFile interface {
+	Up(tx *SqlTx) error
+	Down(tx *SqlTx) error
+	GetVersion() string
+}
+
 // Upgrade
 func (m *Migration) Upgrade(class string) error {
 	for _, migration := range m.Registry[class] {
@@ -90,11 +110,10 @@ func (m *Migration) Downgrade(class string, version string) error {
 			return err
 		}
 	}
-
 	return nil
 }
 
-// Init migration
+// InitMigration Init migration
 func (m *Migration) InitMigration(class string) error {
 	tableName := fmt.Sprintf("migration_%s", class)
 	query := `SELECT to_regclass('%s.public.%s');`
@@ -122,7 +141,7 @@ func (m *Migration) InitMigration(class string) error {
 	return nil
 }
 
-// Create migration file
+// CreateMigrationFile Create migration file
 func (m *Migration) CreateMigrationFile(class string, name string) error {
 	fileName := fmt.Sprintf("m_%v_%s", time.Now().Unix(), name)
 	folderPath := fmt.Sprintf("%s/%s", m.MigrationPath, class)

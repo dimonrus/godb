@@ -2,7 +2,7 @@ package godb
 
 import "fmt"
 
-// Client connection config
+// ConnectionConfig Client connection config
 type ConnectionConfig struct {
 	Host                   string
 	Port                   int
@@ -22,7 +22,7 @@ type ConnectionConfig struct {
 //		the server was signed by a trusted CA and the server host name
 //		matches the one in the certificate)
 
-// Postgres connection config
+// PostgresConnectionConfig Postgres connection config
 type PostgresConnectionConfig struct {
 	ConnectionConfig `yaml:",inline"`
 	SSLMode          string `yaml:"sslMode"`
@@ -41,22 +41,22 @@ func (pcc *PostgresConnectionConfig) String() string {
 	return fmt.Sprintf(stringConnection, pcc.Host, pcc.Port, pcc.User, pcc.Password, pcc.Name)
 }
 
-// Get database type
+// GetDbType Get database type
 func (pcc *PostgresConnectionConfig) GetDbType() string {
 	return "postgres"
 }
 
-// Get Max Connection
+// GetMaxConnection Get Max Connection
 func (cc *ConnectionConfig) GetMaxConnection() int {
 	return cc.MaxConnections
 }
 
-// Connection max idle connections
+// GetMaxIdleConns Connection max idle connections
 func (cc *ConnectionConfig) GetMaxIdleConns() int {
 	return cc.MaxIdleConnections
 }
 
-// Connection idle lifetime
+// GetConnMaxLifetime Connection idle lifetime
 func (cc *ConnectionConfig) GetConnMaxLifetime() int {
 	return cc.ConnectionIdleLifetime
 }

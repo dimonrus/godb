@@ -2,9 +2,28 @@ package godb
 
 import (
 	"github.com/dimonrus/gohelp"
+	"sync"
 )
 
-// Generate transaction id
+// TransactionId transaction identifier
+type TransactionId string
+
+// TransactionPool transaction pool
+type TransactionPool struct {
+	transactions map[TransactionId]*SqlTx
+	m            sync.RWMutex
+}
+
+// Transaction params
+type Transaction struct {
+	// Time to live in unix timestampt
+	// 0 - no TTL for transaction
+	TTL int
+	// Event on transaction done
+	done chan struct{}
+}
+
+// GenTransactionId Generate transaction id
 func GenTransactionId() TransactionId {
 	return TransactionId(gohelp.RandString(16))
 }
@@ -25,7 +44,7 @@ func (p *TransactionPool) Set(id TransactionId, tx *SqlTx) *TransactionPool {
 	return p
 }
 
-// Unset transaction
+// UnSet transaction
 func (p *TransactionPool) UnSet(id TransactionId) *TransactionPool {
 	p.m.Lock()
 	delete(p.transactions, id)
@@ -41,12 +60,12 @@ func (p *TransactionPool) Reset() *TransactionPool {
 	return p
 }
 
-// Transaction count
+// Count transaction count
 func (p *TransactionPool) Count() int {
 	return len(p.transactions)
 }
 
-// Create Transaction pool
+// NewTransactionPool Create transaction pool
 func NewTransactionPool() *TransactionPool {
 	return &TransactionPool{
 		transactions: make(map[TransactionId]*SqlTx),
