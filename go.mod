@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/dimonrus/gocli v0.9.5
-	github.com/dimonrus/gohelp v1.1.0
+	github.com/dimonrus/gohelp v1.1.1
 	github.com/lib/pq v1.10.6
 )
 
