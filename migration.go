@@ -185,7 +185,7 @@ func (m *Migration) GetTemplate() *template.Template {
 package {{ .Class }}
 
 import (
-	"github.com/dimonrus/godb"
+	"github.com/dimonrus/godb\v2"
 	"{{ .RegistryPath }}"
 )
 
