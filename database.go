@@ -10,7 +10,7 @@ import (
 	"unsafe"
 )
 
-var logger = func(lg gocli.Logger, message chan string) {
+var logger = func(lg ILogger, message chan string) {
 	for s := range message {
 		lg.Println(s)
 	}
