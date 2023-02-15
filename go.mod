@@ -3,7 +3,7 @@ module github.com/dimonrus/godb/v2
 go 1.18
 
 require (
-	github.com/dimonrus/gocli v0.10.1
+	github.com/dimonrus/gocli v0.11.0
 	github.com/dimonrus/gohelp v1.1.1
 	github.com/lib/pq v1.10.7
 )
