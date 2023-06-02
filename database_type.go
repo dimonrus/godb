@@ -15,7 +15,7 @@ type Queryer interface {
 	QueryRow(query string, args ...interface{}) *sql.Row
 }
 
-// Database Object Connection Interface
+// Connection Database Object Connection Interface
 type Connection interface {
 	String() string
 	GetDbType() string
@@ -36,14 +36,14 @@ type Options struct {
 	TransactionTTL time.Duration `yaml:"transactionTTL"`
 }
 
-// Main Database Object
+// DBO Main Database Object
 type DBO struct {
 	*sql.DB
 	Options
 	Connection Connection
 }
 
-// Transaction
+// SqlTx Transaction object
 type SqlTx struct {
 	m sync.Mutex
 	*sql.Tx
@@ -51,7 +51,7 @@ type SqlTx struct {
 	transaction *Transaction
 }
 
-// Stmt
+// SqlStmt Statement object
 type SqlStmt struct {
 	m sync.Mutex
 	*sql.Stmt
