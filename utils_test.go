@@ -2,7 +2,12 @@ package godb
 
 import "testing"
 
-// BenchmarkPreparePos/normal-8             5087773               230.5 ns/op           288 B/op          2 allocs/op
+// goos: darwin
+// goarch: arm64
+// pkg: github.com/dimonrus/godb/v2
+// BenchmarkPreparePos
+// BenchmarkPreparePos/normal
+// BenchmarkPreparePos/normal-12         	 7305537	       155.9 ns/op	     288 B/op	       2 allocs/op
 func BenchmarkPreparePos(b *testing.B) {
 	b.Run("normal", func(b *testing.B) {
 		q := "update apple_attribute set code = 'name_test_update' where id = ? AND ab = ? OR ad = ? AND aa = ANY(?)"

@@ -2,6 +2,11 @@
 
 *The database wrapper for manage postgres db*
 
+## Support DB drivers
+- [Postgres](https://github.com/lib/pq)
+- [MySQL](https://github.com/go-sql-driver/mysql)
+- [Sqlite](https://github.com/mattn/go-sqlite3)
+
 ## Init connection example
 
 ```
