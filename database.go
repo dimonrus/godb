@@ -3,18 +3,8 @@ package godb
 import (
 	"context"
 	"database/sql"
-	"github.com/dimonrus/gocli"
-	"strconv"
-	"strings"
 	"time"
-	"unsafe"
 )
-
-var logger = func(lg gocli.Logger, message chan string) {
-	for s := range message {
-		lg.Println(s)
-	}
-}
 
 // Init Database Object
 func (dbo DBO) Init() (*DBO, error) {
@@ -28,29 +18,15 @@ func (dbo DBO) Init() (*DBO, error) {
 	return &dbo, nil
 }
 
-// Get Db Instance
-func getDb(connection Connection) (*sql.DB, error) {
-	//Open connection
-	dbo, err := sql.Open(connection.GetDbType(), connection.String())
-	if err != nil {
-		return nil, err
-	}
-	// Ping db
-	err = dbo.Ping()
-	if err != nil {
-		return nil, err
-	}
-	// Set connection options
-	dbo.SetMaxIdleConns(connection.GetMaxIdleConns())
-	dbo.SetConnMaxLifetime(time.Second * time.Duration(connection.GetConnMaxLifetime()))
-	dbo.SetMaxOpenConns(connection.GetMaxConnection())
-	return dbo, nil
+// ConnType get connection type
+func (dbo *DBO) ConnType() string {
+	return dbo.Connection.GetDbType()
 }
 
 // Query SQL exec query
 func (dbo *DBO) Query(query string, args ...interface{}) (*sql.Rows, error) {
-	if strings.Contains(query, "?") {
-		query = preparePositionalArgsQuery(query)
+	if dbo.Options.QueryProcessor != nil {
+		query = dbo.Options.QueryProcessor(query)
 	}
 	if dbo.Debug == true {
 		dbo.logMessage <- query
@@ -60,8 +36,8 @@ func (dbo *DBO) Query(query string, args ...interface{}) (*sql.Rows, error) {
 
 // Exec SQL run query
 func (dbo *DBO) Exec(query string, args ...interface{}) (sql.Result, error) {
-	if strings.Contains(query, "?") {
-		query = preparePositionalArgsQuery(query)
+	if dbo.Options.QueryProcessor != nil {
+		query = dbo.Options.QueryProcessor(query)
 	}
 	if dbo.Debug == true {
 		dbo.logMessage <- query
@@ -71,8 +47,8 @@ func (dbo *DBO) Exec(query string, args ...interface{}) (sql.Result, error) {
 
 // QueryRow SQL query row
 func (dbo *DBO) QueryRow(query string, args ...interface{}) *sql.Row {
-	if strings.Contains(query, "?") {
-		query = preparePositionalArgsQuery(query)
+	if dbo.Options.QueryProcessor != nil {
+		query = dbo.Options.QueryProcessor(query)
 	}
 	if dbo.Debug == true {
 		dbo.logMessage <- query
@@ -82,8 +58,8 @@ func (dbo *DBO) QueryRow(query string, args ...interface{}) *sql.Row {
 
 // Prepare statement
 func (dbo *DBO) Prepare(query string) (*SqlStmt, error) {
-	if strings.Contains(query, "?") {
-		query = preparePositionalArgsQuery(query)
+	if dbo.Options.QueryProcessor != nil {
+		query = dbo.Options.QueryProcessor(query)
 	}
 	stmt, err := dbo.DB.PrepareContext(context.Background(), query)
 	return &SqlStmt{Stmt: stmt, Options: dbo.Options, query: query}, err
@@ -97,7 +73,9 @@ func (dbo *DBO) Begin() (*SqlTx, error) {
 		Options: dbo.Options,
 		transaction: &Transaction{
 			TTL: int(dbo.Options.TransactionTTL),
-		}}
+		},
+		Connection: dbo.Connection,
+	}
 	stx.delayedRollback()
 	return stx, err
 }
@@ -161,8 +139,8 @@ func (tx *SqlTx) Rollback() error {
 func (tx *SqlTx) Prepare(query string) (*SqlStmt, error) {
 	tx.m.Lock()
 	defer tx.m.Unlock()
-	if strings.Contains(query, "?") {
-		query = preparePositionalArgsQuery(query)
+	if tx.Options.QueryProcessor != nil {
+		query = tx.Options.QueryProcessor(query)
 	}
 	stmt, err := tx.PrepareContext(context.Background(), query)
 	return &SqlStmt{Stmt: stmt, Options: tx.Options, query: query}, err
@@ -180,8 +158,8 @@ func (tx *SqlTx) Stmt(stmt *SqlStmt) *SqlStmt {
 func (tx *SqlTx) Exec(query string, args ...interface{}) (sql.Result, error) {
 	tx.m.Lock()
 	defer tx.m.Unlock()
-	if strings.Contains(query, "?") {
-		query = preparePositionalArgsQuery(query)
+	if tx.Options.QueryProcessor != nil {
+		query = tx.Options.QueryProcessor(query)
 	}
 	if tx.Debug == true {
 		tx.logMessage <- query
@@ -193,8 +171,8 @@ func (tx *SqlTx) Exec(query string, args ...interface{}) (sql.Result, error) {
 func (tx *SqlTx) Query(query string, args ...interface{}) (*sql.Rows, error) {
 	tx.m.Lock()
 	defer tx.m.Unlock()
-	if strings.Contains(query, "?") {
-		query = preparePositionalArgsQuery(query)
+	if tx.Options.QueryProcessor != nil {
+		query = tx.Options.QueryProcessor(query)
 	}
 	if tx.Debug == true {
 		tx.logMessage <- query
@@ -206,8 +184,8 @@ func (tx *SqlTx) Query(query string, args ...interface{}) (*sql.Rows, error) {
 func (tx *SqlTx) QueryRow(query string, args ...interface{}) *sql.Row {
 	tx.m.Lock()
 	defer tx.m.Unlock()
-	if strings.Contains(query, "?") {
-		query = preparePositionalArgsQuery(query)
+	if tx.Options.QueryProcessor != nil {
+		query = tx.Options.QueryProcessor(query)
 	}
 	if tx.Debug == true {
 		tx.logMessage <- query
@@ -215,12 +193,17 @@ func (tx *SqlTx) QueryRow(query string, args ...interface{}) *sql.Row {
 	return tx.Tx.QueryRowContext(context.Background(), query, args...)
 }
 
+// ConnType get connection type
+func (tx *SqlTx) ConnType() string {
+	return tx.Connection.GetDbType()
+}
+
 // Exec Stmt Exec
 func (st *SqlStmt) Exec(args ...interface{}) (sql.Result, error) {
 	st.m.Lock()
 	defer st.m.Unlock()
-	if strings.Contains(st.query, "?") {
-		st.query = preparePositionalArgsQuery(st.query)
+	if st.Options.QueryProcessor != nil {
+		st.query = st.Options.QueryProcessor(st.query)
 	}
 	if st.Debug == true {
 		st.logMessage <- st.query
@@ -232,8 +215,8 @@ func (st *SqlStmt) Exec(args ...interface{}) (sql.Result, error) {
 func (st *SqlStmt) Query(args ...interface{}) (*sql.Rows, error) {
 	st.m.Lock()
 	defer st.m.Unlock()
-	if strings.Contains(st.query, "?") {
-		st.query = preparePositionalArgsQuery(st.query)
+	if st.Options.QueryProcessor != nil {
+		st.query = st.Options.QueryProcessor(st.query)
 	}
 	if st.Debug == true {
 		st.logMessage <- st.query
@@ -245,41 +228,11 @@ func (st *SqlStmt) Query(args ...interface{}) (*sql.Rows, error) {
 func (st *SqlStmt) QueryRow(args ...interface{}) *sql.Row {
 	st.m.Lock()
 	defer st.m.Unlock()
-	if strings.Contains(st.query, "?") {
-		st.query = preparePositionalArgsQuery(st.query)
+	if st.Options.QueryProcessor != nil {
+		st.query = st.Options.QueryProcessor(st.query)
 	}
 	if st.Debug == true {
 		st.logMessage <- st.query
 	}
 	return st.Stmt.QueryRowContext(context.Background(), args...)
-}
-
-// PreparePositionalArgsQuery Position argument
-func preparePositionalArgsQuery(query string) string {
-	var ll = len(query)
-	var b = make([]byte, ll*2)
-	var j int64 = 1
-	var i, k, l, s int
-	for i < len(query) {
-		if query[i] == '?' {
-			p := query[s:i] + "$" + strconv.FormatInt(j, 10)
-			l += len(p)
-			if l > len(b) {
-				ll = ll * 2
-				b = append(b, make([]byte, ll)...)
-			}
-			copy(b[k:l], p)
-			s = i + 1
-			k = l
-			j++
-		}
-		i++
-	}
-	if i > s {
-		p := query[s:]
-		l += len(p)
-		copy(b[k:l], p)
-	}
-	b = b[:l]
-	return *(*string)(unsafe.Pointer(&b))
 }

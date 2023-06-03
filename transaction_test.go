@@ -2,11 +2,47 @@ package godb
 
 import (
 	"database/sql"
-	_ "github.com/lib/pq"
+	"fmt"
+	"github.com/dimonrus/gocli"
+	// _ "github.com/lib/pq"
 	"sync"
 	"testing"
 	"time"
 )
+
+type postgresDockerConnection struct{}
+
+func (c *postgresDockerConnection) String() string {
+	return fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
+		"0.0.0.0", 5432, "migrate", "migrate", "migrate")
+}
+
+func (c *postgresDockerConnection) GetDbType() string {
+	return "postgres"
+}
+
+func (c *postgresDockerConnection) GetMaxConnection() int {
+	return 200
+}
+
+func (c *postgresDockerConnection) GetMaxIdleConns() int {
+	return 15
+}
+
+func (c *postgresDockerConnection) GetConnMaxLifetime() int {
+	return 50
+}
+
+func initDb() (*DBO, error) {
+	return DBO{
+		Options: Options{
+			Debug:          true,
+			QueryProcessor: PreparePositionalArgsQuery,
+			Logger:         gocli.NewLogger(gocli.LoggerConfig{}),
+		},
+		Connection: &postgresDockerConnection{},
+	}.Init()
+}
 
 func TestAsyncTransaction(t *testing.T) {
 	db, err := initDb()
@@ -70,7 +106,7 @@ func TestAsyncTransaction(t *testing.T) {
 }
 
 func initNativePQ() (*sql.DB, error) {
-	conn := &connection{}
+	conn := &postgresDockerConnection{}
 	dbo, err := sql.Open(conn.GetDbType(), conn.String())
 	if err != nil {
 		return nil, err
@@ -87,7 +123,7 @@ func initNativePQ() (*sql.DB, error) {
 	return dbo, nil
 }
 
-//  BenchmarkNativePq-4   	      92	  11482190 ns/op	    1346 B/op	      20 allocs/op
+// BenchmarkNativePq-4   	      92	  11482190 ns/op	    1346 B/op	      20 allocs/op
 func BenchmarkNativePq(b *testing.B) {
 	db, err := initNativePQ()
 	if err != nil {
@@ -114,7 +150,11 @@ func BenchmarkNativePq(b *testing.B) {
 	b.ReportAllocs()
 }
 
-// BenchmarkTransaction-4   	      96	  12133164 ns/op	    1753 B/op	      26 allocs/op
+// oos: darwin
+// goarch: arm64
+// pkg: github.com/dimonrus/godb/v2
+// BenchmarkTransaction
+// BenchmarkTransaction-12    	     696	   1691994 ns/op	    1632 B/op	      24 allocs/op
 func BenchmarkTransaction(b *testing.B) {
 	db, err := initDb()
 	if err != nil {
@@ -171,7 +211,7 @@ func TestTransactionPool(t *testing.T) {
 
 	tx = pool.Get(tx2)
 	if tx != nil {
-		_ ,err = tx.Exec("select version();")
+		_, err = tx.Exec("select version();")
 		if err == sql.ErrTxDone {
 			pool.UnSet(tx2)
 		} else {

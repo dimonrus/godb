@@ -4,13 +4,21 @@ import "fmt"
 
 // ConnectionConfig Client connection config
 type ConnectionConfig struct {
-	Host                   string
-	Port                   int
-	Name                   string
-	User                   string
-	Password               string
-	MaxConnections         int `yaml:"maxConnections"`
-	MaxIdleConnections     int `yaml:"maxIdleConnections"`
+	// Database host
+	Host string `yaml:"host"`
+	// Database port
+	Port int `yaml:"port"`
+	// Database name
+	Name string `yaml:"name"`
+	// Database user
+	User string `yaml:"user"`
+	// Database password
+	Password string `yaml:"password"`
+	// Maximum connections
+	MaxConnections int `yaml:"maxConnections"`
+	// Maximum idle connections count
+	MaxIdleConnections int `yaml:"maxIdleConnections"`
+	// Connection idle lifetime
 	ConnectionIdleLifetime int `yaml:"connectionIdleLifetime"`
 }
 
@@ -25,8 +33,10 @@ type ConnectionConfig struct {
 // PostgresConnectionConfig Postgres connection config
 type PostgresConnectionConfig struct {
 	ConnectionConfig `yaml:",inline"`
-	SSLMode          string `yaml:"sslMode"`
-	BinaryParameters bool   `yaml:"binaryParameters"`
+	// SSL mode
+	SSLMode string `yaml:"sslMode"`
+	// Use with pgpool
+	BinaryParameters bool `yaml:"binaryParameters"`
 }
 
 // To string

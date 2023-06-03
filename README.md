@@ -12,6 +12,7 @@ connectionConfig := godb.PostgresConnectionConfig{...}
 dbo, err := godb.DBO{
     Options: godb.Options{
         Debug:  true,
+        QueryProcessor: godb.PreparePositionalArgsQuery,
         Logger: App.GetLogger(),
     },
     Connection: &connectionConfig,
@@ -49,31 +50,6 @@ func EndTransaction(q *godb.SqlTx, e porterr.IError) {
 tx := StartTransaction()
 defer func() { EndTransaction(tx, e) }()
 
-```
-
-## Migration
-``` 
-
-migrations := &godb.Migration{
-    RegistryPath:  "user/project",
-    MigrationPath: "user/project/migrations",
-    RegistryXPath: "app.Registry",
-    DBO:           app.GetDB(),
-    Registry:      make(godb.MigrationRegistry),
-    Config:        app.GetConfig().Db.ConnectionConfig,
-}
-
-// Init schema migration
-err := migrations.InitMigration("schema")
-if err != nil {
-    panic(err)
-}
-
-// Execute schema migrations
-err = migrations.Upgrade("schema")
-if err != nil {
-    panic(err)
-}
 ```
 
 #### If you find this project useful or want to support the author, you can send tokens to any of these wallets
