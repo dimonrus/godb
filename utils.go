@@ -17,6 +17,18 @@ var logger = func(lg gocli.Logger, message chan string) {
 	}
 }
 
+// cache for positional args
+var positionalArgs = prepareAllPositions()
+
+// Init position args from $1 to $65535
+func prepareAllPositions() []string {
+	result := make([]string, 1<<16)
+	for i := int64(1); i < 1<<16; i++ {
+		result[i] = "$" + strconv.FormatInt(i, 10)
+	}
+	return result
+}
+
 // IsTableExists check if table exists
 func IsTableExists(q Queryer, table, schema string) bool {
 	query := fmt.Sprintf(`SELECT table_name FROM information_schema.tables WHERE table_name = '%s'`, table)
@@ -49,13 +61,29 @@ func PreparePositionalArgsQuery(query string) string {
 	var i, k, l, s int
 	for i < len(query) {
 		if query[i] == '?' {
-			p := query[s:i] + "$" + strconv.FormatInt(j, 10)
-			l += len(p)
-			if l > len(b) {
-				ll = ll * 2
-				b = append(b, make([]byte, ll)...)
+			if i+1 < ll && query[i+1] == '?' {
+				i++
+				l += len(query[s:i])
+				if l > len(b) {
+					ll = ll * 2
+					b = append(b, make([]byte, ll)...)
+				}
+				copy(b[k:l], query[s:i])
+			} else {
+				l += len(query[s:i])
+				if l > len(b) {
+					ll = ll * 2
+					b = append(b, make([]byte, ll)...)
+				}
+				copy(b[k:l], query[s:i])
+				k = l
+				l += len(positionalArgs[j])
+				if l > len(b) {
+					ll = ll * 2
+					b = append(b, make([]byte, ll)...)
+				}
+				copy(b[k:l], positionalArgs[j])
 			}
-			copy(b[k:l], p)
 			s = i + 1
 			k = l
 			j++
