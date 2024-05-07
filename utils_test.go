@@ -35,6 +35,14 @@ func TestPreparePositionalArgsQuery(t *testing.T) {
 			t.Fatal("wrong quoted")
 		}
 	})
+	t.Run("quoted_serial", func(t *testing.T) {
+		q := "update apple_attribute set code = 'name_test_update' where a ?? b AND ab = ? OR ad = ? AND aa ?? ANY(ARRAY[1,2,3]) AND b = ?"
+		r := PreparePositionalArgsQuery(q)
+		t.Log(r)
+		if r != "update apple_attribute set code = 'name_test_update' where a ? b AND ab = $1 OR ad = $2 AND aa ? ANY(ARRAY[1,2,3]) AND b = $3" {
+			t.Fatal("wrong quoted_serial")
+		}
+	})
 	t.Run("serial", func(t *testing.T) {
 		q := "? ? ? ? ?"
 		r := PreparePositionalArgsQuery(q)

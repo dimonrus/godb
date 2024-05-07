@@ -83,10 +83,10 @@ func PreparePositionalArgsQuery(query string) string {
 					b = append(b, make([]byte, ll)...)
 				}
 				copy(b[k:l], positionalArgs[j])
+				j++
 			}
 			s = i + 1
 			k = l
-			j++
 		}
 		i++
 	}
