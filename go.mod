@@ -3,8 +3,8 @@ module github.com/dimonrus/godb/v2
 go 1.18
 
 require (
-	github.com/dimonrus/gocli v0.12.3
-	github.com/dimonrus/gohelp v1.3.0
+	github.com/dimonrus/gocli v0.12.5
+	github.com/dimonrus/gohelp v1.5.1
 )
 
 require (
