@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/dimonrus/gocli v0.13.1
-	github.com/dimonrus/gohelp v1.7.0
+	github.com/dimonrus/gohelp v1.7.1
 )
 
 require (
