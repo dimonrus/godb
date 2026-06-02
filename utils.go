@@ -3,11 +3,12 @@ package godb
 import (
 	"database/sql"
 	"fmt"
-	"github.com/dimonrus/gocli"
 	"strconv"
 	"strings"
 	"time"
 	"unsafe"
+
+	"github.com/dimonrus/gocli"
 )
 
 // init logger callback
@@ -96,6 +97,7 @@ func PreparePositionalArgsQuery(query string) string {
 		copy(b[k:l], p)
 	}
 	b = b[:l]
+	// #nosec G103
 	return *(*string)(unsafe.Pointer(&b))
 }
 
